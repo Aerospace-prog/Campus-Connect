@@ -5,14 +5,13 @@ import { TouchableOpacity } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth.context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRole } from '@/hooks/use-role';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { user } = useAuth();
+  const { isAdmin } = useRole();
   const router = useRouter();
-  const isAdmin = user?.role === 'admin';
 
   return (
     <Tabs

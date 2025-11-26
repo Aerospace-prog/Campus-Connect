@@ -3,17 +3,81 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 12, 19);
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get user's role from their document
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Helper function to check if user is an admin
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    // Helper function to check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Users can read their own document
+      // Admins can read any user document
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can only create their own document during signup
+      allow create: if isOwner(userId) 
+        && request.resource.data.role == 'student'
+        && request.resource.data.keys().hasAll(['uid', 'email', 'name', 'role', 'createdAt', 'updatedAt']);
+      
+      // Users can update their own document but cannot change their role
+      // Admins can update any user document including role
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
+        || isAdmin();
+      
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // Events collection rules
+    match /events/{eventId} {
+      // All authenticated users can read events
+      allow read: if isAuthenticated();
+      
+      // Only admins can create events
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['title', 'description', 'date', 'location', 'createdBy', 'rsvps', 'checkedIn', 'createdAt', 'updatedAt'])
+        && request.resource.data.createdBy == request.auth.uid;
+      
+      // Admins can update events they created
+      // Any authenticated user can update rsvps array (for RSVP functionality)
+      allow update: if isAuthenticated() && (
+        // Admin updating their own event
+        (isAdmin() && resource.data.createdBy == request.auth.uid)
+        // Any user updating only the rsvps array (adding/removing their own ID)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rsvps', 'updatedAt']))
+        // Admin updating checkedIn array (for check-in functionality)
+        || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkedIn', 'updatedAt']))
+      );
+      
+      // Only admins can delete events they created
+      allow delete: if isAdmin() && resource.data.createdBy == request.auth.uid;
+    }
+
+    // Notifications collection rules (for push notification records)
+    match /notifications/{notificationId} {
+      // Users can read notifications sent to them
+      allow read: if isAuthenticated();
+      
+      // Only admins can create notifications
+      allow create: if isAdmin();
+      
+      // No updates or deletes allowed
+      allow update, delete: if false;
     }
   }
 }

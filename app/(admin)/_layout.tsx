@@ -1,20 +1,35 @@
-import { useAuth } from '@/contexts/auth.context';
+import { useRole } from '@/hooks/use-role';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 
 export default function AdminLayout() {
-  const { user, loading } = useAuth();
+  const { isAdmin, loading } = useRole();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
 
-    // Check if user is admin, redirect if not
-    if (!user || user.role !== 'admin') {
+    // Check if user is admin, redirect if not (Requirements 8.1)
+    if (!isAdmin) {
       router.replace('/(tabs)' as any);
     }
-  }, [user, loading, router]);
+  }, [isAdmin, loading, router]);
+
+  // Show loading indicator while checking role
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+    );
+  }
+
+  // Don't render admin screens if not admin
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <Stack

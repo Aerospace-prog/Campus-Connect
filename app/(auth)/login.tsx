@@ -167,7 +167,7 @@ export default function LoginScreen() {
 
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
               <TouchableOpacity onPress={navigateToSignup} disabled={loading}>
                 <Text style={styles.linkText}>Sign Up</Text>
               </TouchableOpacity>

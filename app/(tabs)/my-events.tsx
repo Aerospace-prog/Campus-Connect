@@ -9,6 +9,7 @@ import {
     RefreshControl,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native';
 
@@ -35,11 +36,25 @@ export default function MyEventsScreen() {
     router.push(`/event/${eventId}`);
   };
 
+  const handleQRPress = (eventId: string) => {
+    router.push(`/qr-code/${eventId}`);
+  };
+
   const renderEventCard = ({ item }: { item: Event }) => (
-    <EventCard
-      event={item}
-      onPress={() => handleEventPress(item.id)}
-    />
+    <View style={styles.eventCardContainer}>
+      <EventCard
+        event={item}
+        onPress={() => handleEventPress(item.id)}
+      />
+      <TouchableOpacity
+        style={styles.qrButton}
+        onPress={() => handleQRPress(item.id)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.qrButtonIcon}>📱</Text>
+        <Text style={styles.qrButtonText}>Show QR Code</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderEmptyState = () => {
@@ -72,7 +87,7 @@ export default function MyEventsScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Events</Text>
         <Text style={styles.headerSubtitle}>
-          {myEvents.length} {myEvents.length === 1 ? 'event' : 'events'} RSVP'd
+          {myEvents.length} {myEvents.length === 1 ? 'event' : 'events'} RSVP&apos;d
         </Text>
       </View>
 
@@ -161,5 +176,38 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  eventCardContainer: {
+    marginBottom: 8,
+  },
+  qrButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    marginHorizontal: 16,
+    marginTop: -4,
+    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  qrButtonIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  qrButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
