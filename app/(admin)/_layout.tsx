@@ -56,6 +56,14 @@ export default function AdminLayout() {
         options={{ title: 'Create Event' }} 
       />
       <Stack.Screen 
+        name="my-events" 
+        options={{ title: 'My Events' }} 
+      />
+      <Stack.Screen 
+        name="edit-event" 
+        options={{ title: 'Edit Event' }} 
+      />
+      <Stack.Screen 
         name="scanner" 
         options={{ title: 'Scan QR Code' }} 
       />

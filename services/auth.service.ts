@@ -21,12 +21,13 @@ import { User, UserRole } from '../types/models';
 export class AuthService {
   /**
    * Sign up a new user with email and password
-   * Creates a user document in Firestore with default 'student' role
+   * Creates a user document in Firestore with user-selected role
    */
   static async signUp(
     email: string,
     password: string,
-    name: string
+    name: string,
+    role: UserRole
   ): Promise<User> {
     try {
       // Create user in Firebase Authentication
@@ -38,12 +39,12 @@ export class AuthService {
 
       const firebaseUser = userCredential.user;
 
-      // Create user document in Firestore with default 'student' role
+      // Create user document in Firestore with user-selected role
       const userData: User = {
         uid: firebaseUser.uid,
         email: firebaseUser.email!,
         name,
-        role: 'student' as UserRole,
+        role,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };

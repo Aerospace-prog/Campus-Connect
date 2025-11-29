@@ -1,13 +1,11 @@
 import { useAuth } from '@/contexts/auth.context';
 import { useRole } from '@/hooks/use-role';
-import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useRole();
-  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
@@ -31,22 +29,12 @@ export default function ProfileScreen() {
         {/* Admin badge - only shown for admin users (Requirements 8.2, 8.5) */}
         {isAdmin && (
           <View style={styles.adminBadge}>
-            <Text style={styles.adminBadgeText}>Admin</Text>
+            <Text style={styles.adminBadgeText}>Event Organizer</Text>
           </View>
         )}
       </View>
 
       <View style={styles.actionsContainer}>
-        {/* Admin dashboard button - only shown for admin users (Requirements 8.2, 8.5) */}
-        {isAdmin && (
-          <TouchableOpacity
-            style={styles.adminButton}
-            onPress={() => router.push('/(admin)/dashboard' as any)}
-          >
-            <Text style={styles.adminButtonText}>Admin Dashboard</Text>
-          </TouchableOpacity>
-        )}
-
         <TouchableOpacity
           style={styles.signOutButton}
           onPress={handleSignOut}
@@ -109,17 +97,6 @@ const styles = StyleSheet.create({
   actionsContainer: {
     gap: 12,
     marginBottom: 24,
-  },
-  adminButton: {
-    backgroundColor: '#6366f1',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  adminButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   signOutButton: {
     backgroundColor: '#ef4444',

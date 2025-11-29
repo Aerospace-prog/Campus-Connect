@@ -1,6 +1,5 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -10,8 +9,7 @@ import { useRole } from '@/hooks/use-role';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { isAdmin } = useRole();
-  const router = useRouter();
+  const { isAdmin, isStudent } = useRole();
 
   return (
     <Tabs
@@ -24,28 +22,46 @@ export default function TabLayout() {
         },
         headerTintColor: Colors[colorScheme ?? 'light'].text,
       }}>
+      {/* Events tab - visible to all users (Requirements 8.1, 8.2) */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Events',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
-          headerRight: isAdmin ? () => (
-            <TouchableOpacity
-              onPress={() => router.push('/(admin)/dashboard' as any)}
-              style={{ marginRight: 16 }}
-            >
-              <IconSymbol size={24} name="gear" color={Colors[colorScheme ?? 'light'].tint} />
-            </TouchableOpacity>
-          ) : undefined,
         }}
       />
+      
+      {/* My Events tab - visible only to students (Requirements 8.1) */}
       <Tabs.Screen
         name="my-events"
         options={{
           title: 'My Events',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.fill" color={color} />,
+          href: isStudent ? '/my-events' : null,
         }}
       />
+      
+      {/* Manage tab - visible only to admins (Requirements 8.2, 8.6) */}
+      <Tabs.Screen
+        name="manage"
+        options={{
+          title: 'Manage',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2" color={color} />,
+          href: isAdmin ? '/manage' : null,
+        }}
+      />
+      
+      {/* Scanner tab - visible only to admins (Requirements 8.2, 8.7) */}
+      <Tabs.Screen
+        name="scanner"
+        options={{
+          title: 'Scanner',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="qrcode" color={color} />,
+          href: isAdmin ? '/scanner' : null,
+        }}
+      />
+      
+      {/* Profile tab - visible to all users (Requirements 8.1, 8.2) */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -53,6 +69,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
+      
+      {/* Hidden explore tab */}
       <Tabs.Screen
         name="explore"
         options={{

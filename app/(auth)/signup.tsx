@@ -22,12 +22,14 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<'student' | 'admin' | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
+    role?: string;
     general?: string;
   }>({});
 
@@ -38,6 +40,7 @@ export default function SignupScreen() {
       email?: string;
       password?: string;
       confirmPassword?: string;
+      role?: string;
     } = {};
 
     if (!name.trim()) {
@@ -64,6 +67,10 @@ export default function SignupScreen() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
+    if (!selectedRole) {
+      newErrors.role = 'Please select your role';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -79,7 +86,7 @@ export default function SignupScreen() {
     setLoading(true);
 
     try {
-      await signUp(email.trim(), password, name.trim());
+      await signUp(email.trim(), password, name.trim(), selectedRole!);
     } catch (error: any) {
 
       let errorMessage = 'Failed to create account. Please try again.';
@@ -146,6 +153,89 @@ export default function SignupScreen() {
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
             </View>
 
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>I am a...</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleOption,
+                    selectedRole === 'student' && styles.roleOptionSelected,
+                    errors.role && !selectedRole && styles.roleOptionError,
+                  ]}
+                  onPress={() => {
+                    setSelectedRole('student');
+                    if (errors.role) {
+                      setErrors({ ...errors, role: undefined });
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <View style={styles.roleContent}>
+                    <Text
+                      style={[
+                        styles.roleTitle,
+                        selectedRole === 'student' && styles.roleTextSelected,
+                      ]}
+                    >
+                      Student
+                    </Text>
+                    <Text
+                      style={[
+                        styles.roleDescription,
+                        selectedRole === 'student' && styles.roleDescriptionSelected,
+                      ]}
+                    >
+                      Browse and RSVP to events
+                    </Text>
+                  </View>
+                  {selectedRole === 'student' && (
+                    <View style={styles.checkmark}>
+                      <Text style={styles.checkmarkText}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleOption,
+                    selectedRole === 'admin' && styles.roleOptionSelected,
+                    errors.role && !selectedRole && styles.roleOptionError,
+                  ]}
+                  onPress={() => {
+                    setSelectedRole('admin');
+                    if (errors.role) {
+                      setErrors({ ...errors, role: undefined });
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <View style={styles.roleContent}>
+                    <Text
+                      style={[
+                        styles.roleTitle,
+                        selectedRole === 'admin' && styles.roleTextSelected,
+                      ]}
+                    >
+                      Event Organizer
+                    </Text>
+                    <Text
+                      style={[
+                        styles.roleDescription,
+                        selectedRole === 'admin' && styles.roleDescriptionSelected,
+                      ]}
+                    >
+                      Create and manage events
+                    </Text>
+                  </View>
+                  {selectedRole === 'admin' && (
+                    <View style={styles.checkmark}>
+                      <Text style={styles.checkmarkText}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+              {errors.role && <Text style={styles.errorText}>{errors.role}</Text>}
+            </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
@@ -354,5 +444,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#0a7ea4',
+  },
+  roleContainer: {
+    gap: 12,
+  },
+  roleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#f9f9f9',
+  },
+  roleOptionSelected: {
+    borderColor: '#0a7ea4',
+    backgroundColor: '#e6f4f8',
+  },
+  roleOptionError: {
+    borderColor: '#ff3b30',
+  },
+  roleContent: {
+    flex: 1,
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  roleTextSelected: {
+    color: '#0a7ea4',
+  },
+  roleDescription: {
+    fontSize: 13,
+    color: '#666',
+  },
+  roleDescriptionSelected: {
+    color: '#0a7ea4',
+  },
+  checkmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#0a7ea4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  checkmarkText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

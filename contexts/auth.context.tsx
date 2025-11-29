@@ -2,6 +2,8 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 import { AuthService } from '../services/auth.service';
 import { User } from '../types/models';
 
+import { UserRole } from '../types/models';
+
 /**
  * AuthContext type definition
  */
@@ -9,7 +11,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -46,10 +48,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Sign up a new user
    */
-  const signUp = async (email: string, password: string, name: string): Promise<void> => {
+  const signUp = async (email: string, password: string, name: string, role: UserRole): Promise<void> => {
     try {
       setLoading(true);
-      const userData = await AuthService.signUp(email, password, name);
+      const userData = await AuthService.signUp(email, password, name, role);
       setUser(userData);
     } catch (error: any) {
       throw error;
