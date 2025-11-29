@@ -1,5 +1,6 @@
 import { EventCard } from '@/components/event-card';
 import { useAuth } from '@/contexts/auth.context';
+import { useRole } from '@/hooks/use-role';
 import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
 import { useRouter } from 'expo-router';
@@ -16,14 +17,23 @@ import {
 
 /**
  * ManageTab - Admin event management hub
- * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 8.6
  */
 export default function ManageTab() {
   const router = useRouter();
   const { user } = useAuth();
+  const { isAdmin, loading: roleLoading } = useRole();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Fallback guard: redirect non-admins who attempt direct URL access
+  useEffect(() => {
+    if (roleLoading) return;
+    
+    if (!isAdmin) {
+      router.replace('/(tabs)' as any);
+    }
+  }, [isAdmin, roleLoading, router]);
 
   const fetchMyEvents = useCallback(async () => {
     if (!user) return;
@@ -99,13 +109,19 @@ export default function ManageTab() {
     );
   };
 
-  if (loading) {
+  // Show loading while checking role or fetching events
+  if (roleLoading || loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6366f1" />
         <Text style={styles.loadingText}>Loading your events...</Text>
       </View>
     );
+  }
+
+  // Don't render if not admin (fallback for direct URL access)
+  if (!isAdmin) {
+    return null;
   }
 
   return (

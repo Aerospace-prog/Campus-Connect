@@ -26,15 +26,16 @@ service cloud.firestore {
     // Users collection rules
     match /users/{userId} {
       // Users can read their own document
-      // Admins can read any user document
+      // Admins can read any user document (needed for check-in to get user names)
       allow read: if isOwner(userId) || isAdmin();
       
       // Users can only create their own document during signup
+      // Role must be either 'student' or 'admin' 
       allow create: if isOwner(userId) 
-        && request.resource.data.role == 'student'
+        && (request.resource.data.role == 'student' || request.resource.data.role == 'admin')
         && request.resource.data.keys().hasAll(['uid', 'email', 'name', 'role', 'createdAt', 'updatedAt']);
       
-      // Users can update their own document but cannot change their role
+      // Users can update their own document but cannot change their role (Requirement 8.4)
       // Admins can update any user document including role
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
         || isAdmin();
