@@ -3,16 +3,18 @@ import { useAuth } from '@/contexts/auth.context';
 import { useRole } from '@/hooks/use-role';
 import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 /**
@@ -49,9 +51,12 @@ export default function ManageTab() {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchMyEvents();
-  }, [fetchMyEvents]);
+  // Refresh events when screen comes into focus (after returning from modals)
+  useFocusEffect(
+    useCallback(() => {
+      fetchMyEvents();
+    }, [fetchMyEvents])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -60,11 +65,36 @@ export default function ManageTab() {
   }, [fetchMyEvents]);
 
   const handleEventPress = (eventId: string) => {
-    router.push(`/(admin)/edit-event?id=${eventId}` as any);
+    // Navigate to modal edit screen 
+    router.push(`/edit-event?id=${eventId}` as any);
   };
 
   const handleCreateEvent = () => {
-    router.push('/(admin)/create-event' as any);
+    // Navigate to modal create screen
+    router.push('/create-event' as any);
+  };
+
+  const handleDeleteEvent = (eventId: string, eventTitle: string) => {
+    Alert.alert(
+      'Delete Event',
+      `Are you sure you want to delete "${eventTitle}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await EventService.deleteEvent(eventId);
+              // Refresh the list after deletion
+              fetchMyEvents();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete event');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderEventCard = ({ item }: { item: Event }) => (
@@ -74,12 +104,20 @@ export default function ManageTab() {
         onPress={() => handleEventPress(item.id)}
       />
       <View style={styles.cardActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEventPress(item.id)}
-        >
-          <Text style={styles.editButtonText}>✏️ Edit</Text>
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEventPress(item.id)}
+          >
+            <Text style={styles.editButtonText}>✏️ Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteEvent(item.id, item.title)}
+          >
+            <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.statsContainer}>
           <Text style={styles.statsText}>
             {item.checkedIn.length}/{item.rsvps.length} checked in
@@ -211,6 +249,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   editButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -218,6 +260,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+  },
+  deleteButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',

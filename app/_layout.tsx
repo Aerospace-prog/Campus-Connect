@@ -46,6 +46,26 @@ function RootLayoutNav() {
             headerShown: true,
           }} 
         />
+        <Stack.Screen 
+          name="create-event" 
+          options={{ 
+            presentation: 'modal', 
+            title: 'Create Event',
+            headerShown: true,
+            headerStyle: { backgroundColor: '#6366f1' },
+            headerTintColor: '#fff',
+          }} 
+        />
+        <Stack.Screen 
+          name="edit-event" 
+          options={{ 
+            presentation: 'modal', 
+            title: 'Edit Event',
+            headerShown: true,
+            headerStyle: { backgroundColor: '#6366f1' },
+            headerTintColor: '#fff',
+          }} 
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
