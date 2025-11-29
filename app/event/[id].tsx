@@ -70,6 +70,9 @@ export default function EventDetailScreen() {
 
 
   const isRSVPd = id ? isUserRSVPd(id) : false;
+  
+  // Checking if current user is the event creator (organizers shouldn't RSVP to their own events)
+  const isEventCreator = user && event && event.createdBy === user.uid;
 
   const handleRSVPPress = async () => {
     if (!user) {
@@ -186,31 +189,44 @@ export default function EventDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.rsvpButton,
-              isRSVPd ? styles.rsvpButtonActive : styles.rsvpButtonInactive,
-              pressed && styles.rsvpButtonPressed,
-              rsvpLoading && styles.rsvpButtonDisabled,
-            ]}
-            onPress={handleRSVPPress}
-            disabled={rsvpLoading}
-          >
-            {rsvpLoading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <>
-                <Text style={styles.rsvpButtonIcon}>
-                  {isRSVPd ? '✓' : '📅'}
-                </Text>
-                <Text style={styles.rsvpButtonText}>
-                  {isRSVPd ? 'Cancel RSVP' : 'RSVP for Event'}
-                </Text>
-              </>
-            )}
-          </Pressable>
-        </View>
+        {/* Hide RSVP button for event creators - they're the organizer, not an attendee */}
+        {!isEventCreator && (
+          <View style={styles.section}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.rsvpButton,
+                isRSVPd ? styles.rsvpButtonActive : styles.rsvpButtonInactive,
+                pressed && styles.rsvpButtonPressed,
+                rsvpLoading && styles.rsvpButtonDisabled,
+              ]}
+              onPress={handleRSVPPress}
+              disabled={rsvpLoading}
+            >
+              {rsvpLoading ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Text style={styles.rsvpButtonIcon}>
+                    {isRSVPd ? '✓' : '📅'}
+                  </Text>
+                  <Text style={styles.rsvpButtonText}>
+                    {isRSVPd ? 'Cancel RSVP' : 'RSVP for Event'}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
+        
+        {/* Show organizer badge for event creators */}
+        {isEventCreator && (
+          <View style={styles.section}>
+            <View style={styles.organizerBadge}>
+              <Text style={styles.organizerIcon}>👑</Text>
+              <Text style={styles.organizerText}>You're organizing this event</Text>
+            </View>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -371,5 +387,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  organizerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+  },
+  organizerIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  organizerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#92400e',
   },
 });
