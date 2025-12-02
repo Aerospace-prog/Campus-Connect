@@ -166,9 +166,13 @@ export class EventService {
   /**
    * Subscribe to real-time updates for all upcoming events
    * Returns an unsubscribe function
+   * 
+   * @param callback - Called with events array when data changes
+   * @param onError - Optional error callback for handling subscription errors
    */
   static subscribeToEvents(
-    callback: (events: Event[]) => void
+    callback: (events: Event[]) => void,
+    onError?: (error: Error) => void
   ): () => void {
     try {
       const now = Timestamp.now();
@@ -186,12 +190,19 @@ export class EventService {
         },
         (error) => {
           console.error('Error in events subscription:', error);
-          // Call callback with empty array on error to prevent app crash
+          // Call error callback if provided
+          if (onError) {
+            onError(error);
+          }
+          // Still call callback with empty array to prevent app crash
           callback([]);
         }
       );
     } catch (error: any) {
       console.error('Error subscribing to events:', error);
+      if (onError) {
+        onError(error);
+      }
       // Return a no-op unsubscribe function
       return () => {};
     }
