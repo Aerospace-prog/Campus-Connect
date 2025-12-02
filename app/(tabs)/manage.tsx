@@ -3,9 +3,15 @@ import { useAuth } from '@/contexts/auth.context';
 import { useRole } from '@/hooks/use-role';
 import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
+import {
+  EventFilter,
+  filterEventsByStatus,
+  isEventPast,
+  sortEventsByStatus
+} from '@/utils/event.utils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +33,7 @@ export default function ManageTab() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<EventFilter>('all');
 
   // Fallback guard: redirect non-admins who attempt direct URL access
   useEffect(() => {
@@ -57,6 +64,19 @@ export default function ManageTab() {
       fetchMyEvents();
     }, [fetchMyEvents])
   );
+
+  // Filter and sort events based on current filter
+  const displayedEvents = useMemo(() => {
+    const filtered = filterEventsByStatus(events, filter);
+    return sortEventsByStatus(filtered);
+  }, [events, filter]);
+
+  // Count events by status for filter labels
+  const eventCounts = useMemo(() => {
+    const upcoming = events.filter(e => !isEventPast(e.date)).length;
+    const past = events.filter(e => isEventPast(e.date)).length;
+    return { all: events.length, upcoming, past };
+  }, [events]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -97,52 +117,101 @@ export default function ManageTab() {
     );
   };
 
-  const renderEventCard = ({ item }: { item: Event }) => (
-    <View style={styles.cardContainer}>
-      <EventCard
-        event={item}
-        onPress={() => handleEventPress(item.id)}
-      />
-      <View style={styles.cardActions}>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => handleEventPress(item.id)}
-          >
-            <Text style={styles.editButtonText}>✏️ Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteEvent(item.id, item.title)}
-          >
-            <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.statsContainer}>
-          <Text style={styles.statsText}>
-            {item.checkedIn.length}/{item.rsvps.length} checked in
-          </Text>
-        </View>
-      </View>
+  const renderFilterToggle = () => (
+    <View style={styles.filterContainer}>
+      <TouchableOpacity
+        style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+        onPress={() => setFilter('all')}
+      >
+        <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+          All ({eventCounts.all})
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.filterButton, filter === 'upcoming' && styles.filterButtonActive]}
+        onPress={() => setFilter('upcoming')}
+      >
+        <Text style={[styles.filterText, filter === 'upcoming' && styles.filterTextActive]}>
+          Upcoming ({eventCounts.upcoming})
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.filterButton, filter === 'past' && styles.filterButtonActive]}
+        onPress={() => setFilter('past')}
+      >
+        <Text style={[styles.filterText, filter === 'past' && styles.filterTextActive]}>
+          Past ({eventCounts.past})
+        </Text>
+      </TouchableOpacity>
     </View>
   );
+
+  const renderEventCard = ({ item }: { item: Event }) => {
+    const isPast = isEventPast(item.date);
+    
+    return (
+      <View style={styles.cardContainer}>
+        <EventCard
+          event={item}
+          onPress={() => handleEventPress(item.id)}
+          showPastIndicator={true}
+          showAttendanceSummary={true}
+        />
+        <View style={[styles.cardActions, isPast && styles.cardActionsPast]}>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => handleEventPress(item.id)}
+            >
+              <Text style={styles.editButtonText}>✏️ Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeleteEvent(item.id, item.title)}
+            >
+              <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.statsContainer}>
+            {isPast ? (
+              <Text style={styles.statsTextPast}>
+                {item.checkedIn.length}/{item.rsvps.length} attended
+              </Text>
+            ) : (
+              <Text style={styles.statsText}>
+                {item.checkedIn.length}/{item.rsvps.length} checked in
+              </Text>
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   const renderEmptyState = () => {
     if (loading) return null;
 
+    const emptyMessage = filter === 'all' 
+      ? "You haven't created any events yet. Tap the button below to create your first event."
+      : filter === 'upcoming'
+      ? "You don't have any upcoming events. Create a new event to get started."
+      : "You don't have any past events yet.";
+
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>📋</Text>
-        <Text style={styles.emptyTitle}>No Events Created</Text>
-        <Text style={styles.emptyText}>
-          You haven&apos;t created any events yet. Tap the button below to create your first event.
+        <Text style={styles.emptyTitle}>
+          {filter === 'all' ? 'No Events Created' : `No ${filter.charAt(0).toUpperCase() + filter.slice(1)} Events`}
         </Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleCreateEvent}
-        >
-          <Text style={styles.createButtonText}>Create Event</Text>
-        </TouchableOpacity>
+        <Text style={styles.emptyText}>{emptyMessage}</Text>
+        {filter !== 'past' && (
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={handleCreateEvent}
+          >
+            <Text style={styles.createButtonText}>Create Event</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -171,13 +240,15 @@ export default function ManageTab() {
         </Text>
       </View>
 
+      {events.length > 0 && renderFilterToggle()}
+
       <FlatList
-        data={events}
+        data={displayedEvents}
         renderItem={renderEventCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.listContent,
-          events.length === 0 && styles.listContentEmpty,
+          displayedEvents.length === 0 && styles.listContentEmpty,
         ]}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
@@ -226,6 +297,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+  },
+  filterButtonActive: {
+    backgroundColor: '#6366f1',
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  filterTextActive: {
+    color: '#ffffff',
+  },
   listContent: {
     paddingVertical: 8,
     paddingBottom: 80,
@@ -248,6 +347,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
+  },
+  cardActionsPast: {
+    backgroundColor: '#e5e7eb',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -282,6 +384,11 @@ const styles = StyleSheet.create({
   statsText: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  statsTextPast: {
+    fontSize: 14,
+    color: '#9ca3af',
+    fontStyle: 'italic',
   },
   loadingContainer: {
     flex: 1,
