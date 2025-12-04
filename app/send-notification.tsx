@@ -119,9 +119,10 @@ export default function SendNotificationScreen() {
                   statusMessage += `\n\n${issues.join('\n')}`;
                 }
 
-                // Log errors for debugging
+                // Log errors for debugging and show in alert
                 if (result.errors && result.errors.length > 0) {
                   console.log('Notification errors:', result.errors);
+                  statusMessage += `\n\nError: ${result.errors[0]}`;
                 }
 
                 Alert.alert(

@@ -2,13 +2,13 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    updateDoc,
-    where,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { db } from '../config/firebase';
@@ -76,8 +76,18 @@ export class NotificationService {
         return null;
       }
 
-      // Get the push token
+      // Get the Expo push token
       const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+      console.log('Expo Push Token:', tokenData.data);
+
+      // Also get the native device token (FCM for Android, APNs for iOS)
+      // This can be used as a fallback or for direct FCM integration
+      try {
+        const deviceToken = await Notifications.getDevicePushTokenAsync();
+        console.log('Native Device Token (FCM):', deviceToken.data);
+      } catch (e) {
+        console.log('Could not get native device token:', e);
+      }
 
       // Configure Android channel
       if (Platform.OS === 'android') {
