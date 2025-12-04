@@ -1,10 +1,12 @@
 import { EventCard } from '@/components/event-card';
+import { SkeletonList } from '@/components/skeleton';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTheme } from '@/contexts/theme.context';
 import { useEvents } from '@/hooks/use-events';
 import { Event } from '@/types/models';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useMemo , useCallback , useState } from 'react';
 import {
-    ActivityIndicator,
     FlatList,
     RefreshControl,
     StyleSheet,
@@ -15,9 +17,47 @@ import {
 export default function EventsScreen() {
   const router = useRouter();
   const { events, loading, refreshEvents } = useEvents();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const { colors, theme } = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = React.useCallback(async () => {
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: {
+      ...styles.container,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    header: {
+      ...styles.header,
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: {
+      ...styles.headerTitle,
+      color: colors.text,
+    },
+    headerSubtitle: {
+      ...styles.headerSubtitle,
+      color: colors.textSecondary,
+    },
+    loadingContainer: {
+      ...styles.loadingContainer,
+      backgroundColor: colors.backgroundSecondary,
+    },
+    loadingText: {
+      ...styles.loadingText,
+      color: colors.textSecondary,
+    },
+    emptyTitle: {
+      ...styles.emptyTitle,
+      color: colors.text,
+    },
+    emptyText: {
+      ...styles.emptyText,
+      color: colors.textSecondary,
+    },
+  }), [colors]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await refreshEvents();
@@ -48,9 +88,11 @@ export default function EventsScreen() {
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>📅</Text>
-        <Text style={styles.emptyTitle}>No Events Available</Text>
-        <Text style={styles.emptyText}>
+        <View style={styles.emptyIconContainer}>
+          <IconSymbol name="calendar" size={64} color={colors.textTertiary} />
+        </View>
+        <Text style={themedStyles.emptyTitle}>No Events Available</Text>
+        <Text style={themedStyles.emptyText}>
           Check back later for upcoming campus events
         </Text>
       </View>
@@ -59,18 +101,23 @@ export default function EventsScreen() {
 
   if (loading && events.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Loading events...</Text>
+      <View style={themedStyles.container}>
+        <View style={themedStyles.header}>
+          <Text style={themedStyles.headerTitle}>Campus Events</Text>
+          <Text style={themedStyles.headerSubtitle}>
+            Discover upcoming activities
+          </Text>
+        </View>
+        <SkeletonList count={4} type="event" style={styles.skeletonList} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Campus Events</Text>
-        <Text style={styles.headerSubtitle}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
+        <Text style={themedStyles.headerTitle}>Campus Events</Text>
+        <Text style={themedStyles.headerSubtitle}>
           Discover upcoming activities
         </Text>
       </View>
@@ -88,8 +135,8 @@ export default function EventsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#2563eb"
-            colors={['#2563eb']}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -138,14 +185,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
   },
+  skeletonList: {
+    paddingTop: 8,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconContainer: {
     marginBottom: 16,
   },
   emptyTitle: {

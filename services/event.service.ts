@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { CreateEventInput, Event } from '../types/models';
+import { getFirebaseErrorMessage, logError, withRetry } from '../utils/error-handler';
 
 /**
  * EventService - Handles all event-related operations with Firestore
@@ -50,15 +51,18 @@ export class EventService {
         updatedAt: now,
       };
 
-      const docRef = await addDoc(collection(db, this.COLLECTION_NAME), eventData);
+      const docRef = await withRetry(
+        () => addDoc(collection(db, this.COLLECTION_NAME), eventData),
+        { operation: 'createEvent', userId: createdBy }
+      );
 
       return {
         id: docRef.id,
         ...eventData,
       } as Event;
     } catch (error: any) {
-      console.error('Error creating event:', error);
-      throw new Error(error.message || 'Failed to create event');
+      logError(error, { operation: 'createEvent', userId: createdBy });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -74,11 +78,14 @@ export class EventService {
         orderBy('date', 'asc')
       );
 
-      const querySnapshot = await getDocs(eventsQuery);
+      const querySnapshot = await withRetry(
+        () => getDocs(eventsQuery),
+        { operation: 'getEvents' }
+      );
       return this.mapQuerySnapshotToEvents(querySnapshot);
     } catch (error: any) {
-      console.error('Error fetching events:', error);
-      throw new Error(error.message || 'Failed to fetch events');
+      logError(error, { operation: 'getEvents' });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -88,7 +95,10 @@ export class EventService {
   static async getEventById(id: string): Promise<Event> {
     try {
       const docRef = doc(db, this.COLLECTION_NAME, id);
-      const docSnap = await getDoc(docRef);
+      const docSnap = await withRetry(
+        () => getDoc(docRef),
+        { operation: 'getEventById', additionalData: { eventId: id } }
+      );
 
       if (!docSnap.exists()) {
         throw new Error('Event not found');
@@ -99,8 +109,8 @@ export class EventService {
         ...docSnap.data(),
       } as Event;
     } catch (error: any) {
-      console.error('Error fetching event:', error);
-      throw new Error(error.message || 'Failed to fetch event');
+      logError(error, { operation: 'getEventById', additionalData: { eventId: id } });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -124,10 +134,13 @@ export class EventService {
         updateData.date = Timestamp.fromDate(updates.date);
       }
 
-      await updateDoc(docRef, updateData);
+      await withRetry(
+        () => updateDoc(docRef, updateData),
+        { operation: 'updateEvent', additionalData: { eventId: id } }
+      );
     } catch (error: any) {
-      console.error('Error updating event:', error);
-      throw new Error(error.message || 'Failed to update event');
+      logError(error, { operation: 'updateEvent', additionalData: { eventId: id } });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -137,10 +150,13 @@ export class EventService {
   static async deleteEvent(id: string): Promise<void> {
     try {
       const docRef = doc(db, this.COLLECTION_NAME, id);
-      await deleteDoc(docRef);
+      await withRetry(
+        () => deleteDoc(docRef),
+        { operation: 'deleteEvent', additionalData: { eventId: id } }
+      );
     } catch (error: any) {
-      console.error('Error deleting event:', error);
-      throw new Error(error.message || 'Failed to delete event');
+      logError(error, { operation: 'deleteEvent', additionalData: { eventId: id } });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -155,11 +171,14 @@ export class EventService {
         orderBy('createdAt', 'desc')
       );
 
-      const querySnapshot = await getDocs(eventsQuery);
+      const querySnapshot = await withRetry(
+        () => getDocs(eventsQuery),
+        { operation: 'getEventsByCreator', userId: creatorId }
+      );
       return this.mapQuerySnapshotToEvents(querySnapshot);
     } catch (error: any) {
-      console.error('Error fetching events by creator:', error);
-      throw new Error(error.message || 'Failed to fetch events by creator');
+      logError(error, { operation: 'getEventsByCreator', userId: creatorId });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 

@@ -1,5 +1,7 @@
 import { EventCard } from '@/components/event-card';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth.context';
+import { useTheme } from '@/contexts/theme.context';
 import { useRole } from '@/hooks/use-role';
 import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
@@ -29,11 +31,43 @@ import {
 export default function ManageTab() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const { isAdmin, loading: roleLoading } = useRole();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<EventFilter>('all');
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+    header: { 
+      ...styles.header, 
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: { ...styles.headerTitle, color: colors.text },
+    headerSubtitle: { ...styles.headerSubtitle, color: colors.textSecondary },
+    filterContainer: {
+      ...styles.filterContainer,
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    filterButton: { ...styles.filterButton, backgroundColor: colors.backgroundTertiary },
+    filterButtonActive: { backgroundColor: colors.primary },
+    filterText: { ...styles.filterText, color: colors.textSecondary },
+    filterTextActive: { color: colors.onPrimary },
+    cardActions: { ...styles.cardActions, backgroundColor: colors.backgroundTertiary },
+    cardActionsPast: { backgroundColor: colors.border },
+    statsText: { ...styles.statsText, color: colors.textSecondary },
+    statsTextPast: { ...styles.statsTextPast, color: colors.textTertiary },
+    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+    loadingText: { ...styles.loadingText, color: colors.textSecondary },
+    emptyTitle: { ...styles.emptyTitle, color: colors.text },
+    emptyText: { ...styles.emptyText, color: colors.textSecondary },
+    createButton: { ...styles.createButton, backgroundColor: colors.primary },
+    fab: { ...styles.fab, backgroundColor: colors.primary, ...theme.shadows.lg },
+  }), [colors, theme]);
 
   // Fallback guard: redirect non-admins who attempt direct URL access
   useEffect(() => {
@@ -118,28 +152,28 @@ export default function ManageTab() {
   };
 
   const renderFilterToggle = () => (
-    <View style={styles.filterContainer}>
+    <View style={themedStyles.filterContainer}>
       <TouchableOpacity
-        style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+        style={[themedStyles.filterButton, filter === 'all' && themedStyles.filterButtonActive]}
         onPress={() => setFilter('all')}
       >
-        <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+        <Text style={[themedStyles.filterText, filter === 'all' && themedStyles.filterTextActive]}>
           All ({eventCounts.all})
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.filterButton, filter === 'upcoming' && styles.filterButtonActive]}
+        style={[themedStyles.filterButton, filter === 'upcoming' && themedStyles.filterButtonActive]}
         onPress={() => setFilter('upcoming')}
       >
-        <Text style={[styles.filterText, filter === 'upcoming' && styles.filterTextActive]}>
+        <Text style={[themedStyles.filterText, filter === 'upcoming' && themedStyles.filterTextActive]}>
           Upcoming ({eventCounts.upcoming})
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.filterButton, filter === 'past' && styles.filterButtonActive]}
+        style={[themedStyles.filterButton, filter === 'past' && themedStyles.filterButtonActive]}
         onPress={() => setFilter('past')}
       >
-        <Text style={[styles.filterText, filter === 'past' && styles.filterTextActive]}>
+        <Text style={[themedStyles.filterText, filter === 'past' && themedStyles.filterTextActive]}>
           Past ({eventCounts.past})
         </Text>
       </TouchableOpacity>
@@ -157,28 +191,34 @@ export default function ManageTab() {
           showPastIndicator={true}
           showAttendanceSummary={true}
         />
-        <View style={[styles.cardActions, isPast && styles.cardActionsPast]}>
+        <View style={[themedStyles.cardActions, isPast && themedStyles.cardActionsPast]}>
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={styles.editButton}
+              style={[styles.editButton, { backgroundColor: colors.primary }]}
               onPress={() => handleEventPress(item.id)}
             >
-              <Text style={styles.editButtonText}>✏️ Edit</Text>
+              <View style={styles.buttonContent}>
+                <IconSymbol name="pencil" size={14} color={colors.onPrimary} />
+                <Text style={[styles.editButtonText, { color: colors.onPrimary }]}>Edit</Text>
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.deleteButton}
+              style={[styles.deleteButton, { backgroundColor: colors.error }]}
               onPress={() => handleDeleteEvent(item.id, item.title)}
             >
-              <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+              <View style={styles.buttonContent}>
+                <IconSymbol name="xmark" size={14} color={colors.onPrimary} />
+                <Text style={[styles.deleteButtonText, { color: colors.onPrimary }]}>Delete</Text>
+              </View>
             </TouchableOpacity>
           </View>
           <View style={styles.statsContainer}>
             {isPast ? (
-              <Text style={styles.statsTextPast}>
+              <Text style={themedStyles.statsTextPast}>
                 {item.checkedIn.length}/{item.rsvps.length} attended
               </Text>
             ) : (
-              <Text style={styles.statsText}>
+              <Text style={themedStyles.statsText}>
                 {item.checkedIn.length}/{item.rsvps.length} checked in
               </Text>
             )}
@@ -199,17 +239,19 @@ export default function ManageTab() {
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>📋</Text>
-        <Text style={styles.emptyTitle}>
+        <View style={styles.emptyIconContainer}>
+          <IconSymbol name="list.bullet" size={64} color={colors.textTertiary} />
+        </View>
+        <Text style={themedStyles.emptyTitle}>
           {filter === 'all' ? 'No Events Created' : `No ${filter.charAt(0).toUpperCase() + filter.slice(1)} Events`}
         </Text>
-        <Text style={styles.emptyText}>{emptyMessage}</Text>
+        <Text style={themedStyles.emptyText}>{emptyMessage}</Text>
         {filter !== 'past' && (
           <TouchableOpacity
-            style={styles.createButton}
+            style={themedStyles.createButton}
             onPress={handleCreateEvent}
           >
-            <Text style={styles.createButtonText}>Create Event</Text>
+            <Text style={[styles.createButtonText, { color: colors.onPrimary }]}>Create Event</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -219,9 +261,9 @@ export default function ManageTab() {
   // Show loading while checking role or fetching events
   if (roleLoading || loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Loading your events...</Text>
+      <View style={themedStyles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.loadingText}>Loading your events...</Text>
       </View>
     );
   }
@@ -232,10 +274,10 @@ export default function ManageTab() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Manage Events</Text>
-        <Text style={styles.headerSubtitle}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
+        <Text style={themedStyles.headerTitle}>Manage Events</Text>
+        <Text style={themedStyles.headerSubtitle}>
           {events.length} event{events.length !== 1 ? 's' : ''} created
         </Text>
       </View>
@@ -255,8 +297,8 @@ export default function ManageTab() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#6366f1"
-            colors={['#6366f1']}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -264,10 +306,10 @@ export default function ManageTab() {
 
       {events.length > 0 && (
         <TouchableOpacity
-          style={styles.fab}
+          style={themedStyles.fab}
           onPress={handleCreateEvent}
         >
-          <Text style={styles.fabText}>+</Text>
+          <Text style={[styles.fabText, { color: colors.onPrimary }]}>+</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -355,6 +397,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   editButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -407,8 +454,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconContainer: {
     marginBottom: 16,
   },
   emptyTitle: {

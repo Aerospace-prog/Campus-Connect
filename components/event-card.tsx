@@ -1,8 +1,10 @@
+import { useTheme } from '@/contexts/theme.context';
 import { Event } from '@/types/models';
 import { isEventPast } from '@/utils/event.utils';
 import { Timestamp } from 'firebase/firestore';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { IconSymbol } from './ui/icon-symbol';
 
 
 interface EventCardProps {
@@ -19,7 +21,57 @@ export const EventCard: React.FC<EventCardProps> = ({
   showPastIndicator = false,
   showAttendanceSummary = false,
 }) => {
+  const { colors, theme } = useTheme();
   const isPast = isEventPast(event.date);
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    card: {
+      ...styles.card,
+      backgroundColor: colors.cardBackground,
+      ...theme.shadows.md,
+    },
+    cardPast: {
+      backgroundColor: colors.backgroundSecondary,
+      borderWidth: 1,
+      borderColor: colors.border,
+      opacity: 0.8,
+    },
+    title: {
+      ...styles.title,
+      color: colors.text,
+    },
+    titlePast: {
+      color: colors.textSecondary,
+    },
+    detailText: {
+      ...styles.detailText,
+      color: colors.textSecondary,
+    },
+    detailTextPast: {
+      color: colors.textTertiary,
+    },
+    rsvpBadge: {
+      ...styles.rsvpBadge,
+      backgroundColor: colors.primaryLight,
+    },
+    rsvpText: {
+      ...styles.rsvpText,
+      color: colors.primary,
+    },
+    attendanceBadge: {
+      ...styles.attendanceBadge,
+      backgroundColor: colors.backgroundTertiary,
+    },
+    attendanceText: {
+      ...styles.attendanceText,
+      color: colors.textSecondary,
+    },
+    pastBadge: {
+      ...styles.pastBadge,
+      backgroundColor: colors.textTertiary,
+    },
+  }), [colors, theme]);
   
   const formatDateTime = (timestamp: Timestamp): string => {
     const date = timestamp.toDate();
@@ -45,8 +97,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   return (
     <TouchableOpacity
       style={[
-        styles.card,
-        showPastIndicator && isPast && styles.cardPast,
+        themedStyles.card,
+        showPastIndicator && isPast && themedStyles.cardPast,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -58,15 +110,15 @@ export const EventCard: React.FC<EventCardProps> = ({
         <View style={styles.titleRow}>
           <Text 
             style={[
-              styles.title,
-              showPastIndicator && isPast && styles.titlePast,
+              themedStyles.title,
+              showPastIndicator && isPast && themedStyles.titlePast,
             ]} 
             numberOfLines={2}
           >
             {event.title}
           </Text>
           {showPastIndicator && isPast && (
-            <View style={styles.pastBadge}>
+            <View style={themedStyles.pastBadge}>
               <Text style={styles.pastBadgeText}>Ended</Text>
             </View>
           )}
@@ -74,21 +126,33 @@ export const EventCard: React.FC<EventCardProps> = ({
         
         <View style={styles.detailsContainer}>
           <View style={styles.detailRow}>
-            <Text style={styles.icon}>📅</Text>
+            <View style={styles.iconContainer}>
+              <IconSymbol 
+                name="calendar" 
+                size={16} 
+                color={showPastIndicator && isPast ? colors.textTertiary : colors.textSecondary} 
+              />
+            </View>
             <Text style={[
-              styles.detailText,
-              showPastIndicator && isPast && styles.detailTextPast,
+              themedStyles.detailText,
+              showPastIndicator && isPast && themedStyles.detailTextPast,
             ]}>
               {formatDateTime(event.date)}
             </Text>
           </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.icon}>📍</Text>
+            <View style={styles.iconContainer}>
+              <IconSymbol 
+                name="location.fill" 
+                size={16} 
+                color={showPastIndicator && isPast ? colors.textTertiary : colors.textSecondary} 
+              />
+            </View>
             <Text 
               style={[
-                styles.detailText,
-                showPastIndicator && isPast && styles.detailTextPast,
+                themedStyles.detailText,
+                showPastIndicator && isPast && themedStyles.detailTextPast,
               ]} 
               numberOfLines={1}
             >
@@ -99,14 +163,14 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         <View style={styles.footer}>
           {showPastIndicator && isPast && showAttendanceSummary ? (
-            <View style={styles.attendanceBadge}>
-              <Text style={styles.attendanceText}>
+            <View style={themedStyles.attendanceBadge}>
+              <Text style={themedStyles.attendanceText}>
                 {getAttendanceSummary()}
               </Text>
             </View>
           ) : (
-            <View style={styles.rsvpBadge}>
-              <Text style={styles.rsvpText}>
+            <View style={themedStyles.rsvpBadge}>
+              <Text style={themedStyles.rsvpText}>
                 {event.rsvps.length} {event.rsvps.length === 1 ? 'RSVP' : 'RSVPs'}
               </Text>
             </View>
@@ -181,9 +245,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  icon: {
-    fontSize: 14,
+  iconContainer: {
+    width: 20,
     marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   detailText: {
     fontSize: 14,

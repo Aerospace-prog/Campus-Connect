@@ -5,21 +5,19 @@
 export type RootStackParamList = {
   '(auth)': undefined;
   '(tabs)': undefined;
-  '(admin)': undefined;
   'event/[id]': { id: string };
+  'create-event': undefined;
+  'edit-event': { id: string };
+  'send-notification': { eventId?: string };
+  'qr-code/[eventId]': { eventId: string };
 };
 
 export type TabParamList = {
   'index': undefined;
   'my-events': undefined;
+  'manage': undefined;
+  'scanner': undefined;
   'profile': undefined;
-};
-
-export type AdminStackParamList = {
-  'dashboard': undefined;
-  'create-event': undefined;
-  'scanner': { eventId?: string };
-  'send-notification': { eventId: string };
 };
 
 export type AuthStackParamList = {

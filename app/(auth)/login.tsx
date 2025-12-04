@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/auth.context';
+import { useTheme } from '@/contexts/theme.context';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -17,11 +18,48 @@ import {
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
+  const { colors, theme } = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.background },
+    title: { ...styles.title, color: colors.text },
+    subtitle: { ...styles.subtitle, color: colors.textSecondary },
+    label: { ...styles.label, color: colors.text },
+    input: { 
+      ...styles.input, 
+      backgroundColor: colors.inputBackground,
+      borderColor: colors.inputBorder,
+      color: colors.text,
+    },
+    inputError: { 
+      borderColor: colors.error,
+      backgroundColor: colors.errorLight,
+    },
+    errorText: { ...styles.errorText, color: colors.error },
+    generalErrorContainer: {
+      ...styles.generalErrorContainer,
+      backgroundColor: colors.errorLight,
+      borderLeftColor: colors.error,
+    },
+    generalErrorText: { ...styles.generalErrorText, color: colors.error },
+    button: { 
+      ...styles.button, 
+      backgroundColor: colors.primary,
+      ...theme.shadows.md,
+    },
+    buttonDisabled: { 
+      backgroundColor: colors.textDisabled,
+      ...theme.shadows.none,
+    },
+    footerText: { ...styles.footerText, color: colors.textSecondary },
+    linkText: { ...styles.linkText, color: colors.primary },
+  }), [colors, theme]);
 
   const validateForm = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -54,6 +92,7 @@ export default function LoginScreen() {
 
     try {
       await signIn(email.trim(), password);
+      // Navigation will happen automatically via _layout.tsx when auth state changes
     } catch (error: any) {
       let errorMessage = 'Failed to sign in. Please try again.';
 
@@ -74,7 +113,6 @@ export default function LoginScreen() {
 
       setErrors({ general: errorMessage });
       Alert.alert('Login Failed', errorMessage);
-    } finally {
       setLoading(false);
     }
   };
@@ -85,7 +123,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={themedStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -95,19 +133,19 @@ export default function LoginScreen() {
         <View style={styles.content}>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue to CampusConnect</Text>
+            <Text style={themedStyles.title}>Welcome Back</Text>
+            <Text style={themedStyles.subtitle}>Sign in to continue to CampusConnect</Text>
           </View>
 
 
           <View style={styles.form}>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={themedStyles.label}>Email</Text>
               <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
+                style={[themedStyles.input, errors.email && themedStyles.inputError]}
                 placeholder="Enter your email"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -120,16 +158,16 @@ export default function LoginScreen() {
                 autoComplete="email"
                 editable={!loading}
               />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              {errors.email && <Text style={themedStyles.errorText}>{errors.email}</Text>}
             </View>
 
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={themedStyles.label}>Password</Text>
               <TextInput
-                style={[styles.input, errors.password && styles.inputError]}
+                style={[themedStyles.input, errors.password && themedStyles.inputError]}
                 placeholder="Enter your password"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -142,24 +180,24 @@ export default function LoginScreen() {
                 autoComplete="password"
                 editable={!loading}
               />
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+              {errors.password && <Text style={themedStyles.errorText}>{errors.password}</Text>}
             </View>
 
 
             {errors.general && (
-              <View style={styles.generalErrorContainer}>
-                <Text style={styles.generalErrorText}>{errors.general}</Text>
+              <View style={themedStyles.generalErrorContainer}>
+                <Text style={themedStyles.generalErrorText}>{errors.general}</Text>
               </View>
             )}
 
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[themedStyles.button, loading && themedStyles.buttonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.buttonText}>Sign In</Text>
               )}
@@ -167,9 +205,9 @@ export default function LoginScreen() {
 
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Text style={themedStyles.footerText}>Don&apos;t have an account? </Text>
               <TouchableOpacity onPress={navigateToSignup} disabled={loading}>
-                <Text style={styles.linkText}>Sign Up</Text>
+                <Text style={themedStyles.linkText}>Sign Up</Text>
               </TouchableOpacity>
             </View>
           </View>

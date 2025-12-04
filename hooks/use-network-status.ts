@@ -1,9 +1,7 @@
 import NetInfo, { NetInfoState, NetInfoSubscription } from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 
-/**
- * Network status information
- */
+
 export interface NetworkStatus {
   isConnected: boolean;
   isInternetReachable: boolean | null;
@@ -16,11 +14,11 @@ export interface NetworkStatus {
  * This hook monitors the device's network connectivity and provides
  * real-time updates when the connection status changes.
  * 
- * @returns NetworkStatus object with connection information
+ * returns NetworkStatus object with connection information
  */
 export function useNetworkStatus(): NetworkStatus {
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>({
-    isConnected: true, // Assume connected initially
+    isConnected: true,
     isInternetReachable: true,
     type: 'unknown',
   });

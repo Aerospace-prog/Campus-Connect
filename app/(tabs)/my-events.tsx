@@ -1,8 +1,10 @@
 import { EventCard } from '@/components/event-card';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTheme } from '@/contexts/theme.context';
 import { useEvents } from '@/hooks/use-events';
 import { Event } from '@/types/models';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -17,7 +19,29 @@ import {
 export default function MyEventsScreen() {
   const router = useRouter();
   const { myEvents, loading, refreshMyEvents } = useEvents();
+  const { colors, theme } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+    header: { 
+      ...styles.header, 
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: { ...styles.headerTitle, color: colors.text },
+    headerSubtitle: { ...styles.headerSubtitle, color: colors.textSecondary },
+    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+    loadingText: { ...styles.loadingText, color: colors.textSecondary },
+    emptyTitle: { ...styles.emptyTitle, color: colors.text },
+    emptyText: { ...styles.emptyText, color: colors.textSecondary },
+    qrButton: { 
+      ...styles.qrButton, 
+      backgroundColor: colors.primary,
+      ...theme.shadows.md,
+    },
+  }), [colors, theme]);
 
 
   const onRefresh = React.useCallback(async () => {
@@ -47,12 +71,14 @@ export default function MyEventsScreen() {
         onPress={() => handleEventPress(item.id)}
       />
       <TouchableOpacity
-        style={styles.qrButton}
+        style={themedStyles.qrButton}
         onPress={() => handleQRPress(item.id)}
         activeOpacity={0.7}
       >
-        <Text style={styles.qrButtonIcon}>📱</Text>
-        <Text style={styles.qrButtonText}>Show QR Code</Text>
+        <View style={styles.qrButtonIconContainer}>
+          <IconSymbol name="qrcode.viewfinder" size={18} color={colors.onPrimary} />
+        </View>
+        <Text style={[styles.qrButtonText, { color: colors.onPrimary }]}>Show QR Code</Text>
       </TouchableOpacity>
     </View>
   );
@@ -64,9 +90,11 @@ export default function MyEventsScreen() {
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🎟️</Text>
-        <Text style={styles.emptyTitle}>No Events Yet</Text>
-        <Text style={styles.emptyText}>
+        <View style={styles.emptyIconContainer}>
+          <IconSymbol name="ticket.fill" size={64} color={colors.textTertiary} />
+        </View>
+        <Text style={themedStyles.emptyTitle}>No Events Yet</Text>
+        <Text style={themedStyles.emptyText}>
           RSVP to events to see them here and generate QR codes for check-in
         </Text>
       </View>
@@ -75,18 +103,18 @@ export default function MyEventsScreen() {
 
   if (loading && myEvents.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Loading your events...</Text>
+      <View style={themedStyles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.loadingText}>Loading your events...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Events</Text>
-        <Text style={styles.headerSubtitle}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
+        <Text style={themedStyles.headerTitle}>My Events</Text>
+        <Text style={themedStyles.headerSubtitle}>
           {myEvents.length} {myEvents.length === 1 ? 'event' : 'events'} RSVP&apos;d
         </Text>
       </View>
@@ -104,8 +132,8 @@ export default function MyEventsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#2563eb"
-            colors={['#2563eb']}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -160,8 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconContainer: {
     marginBottom: 16,
   },
   emptyTitle: {
@@ -201,8 +228,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  qrButtonIcon: {
-    fontSize: 18,
+  qrButtonIconContainer: {
     marginRight: 8,
   },
   qrButtonText: {

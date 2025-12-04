@@ -1,8 +1,6 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { AuthService } from '../services/auth.service';
-import { User } from '../types/models';
-
-import { UserRole } from '../types/models';
+import { User, UserRole } from '../types/models';
 
 /**
  * AuthContext type definition
@@ -30,19 +28,35 @@ interface AuthProviderProps {
 
 /**
  * AuthProvider - Provides authentication state and methods to the app
+ * Implements session persistence across app restarts
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
+    console.log('[AuthProvider] Setting up auth state listener');
+    
     const unsubscribe = AuthService.onAuthStateChanged((userData) => {
-      setUser(userData);
-      setLoading(false);
+      console.log('[AuthProvider] Auth state changed:', userData ? `User: ${userData.email}` : 'No user');
+      
+      // Only update state if we have a definitive answer
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        setUser(userData);
+        setLoading(false);
+      } else {
+        setUser(userData);
+        setLoading(false);
+      }
     });
 
     // Cleanup subscription on unmount
-    return () => unsubscribe();
+    return () => {
+      console.log('[AuthProvider] Cleaning up auth state listener');
+      unsubscribe();
+    };
   }, []);
 
   /**
@@ -51,13 +65,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signUp = async (email: string, password: string, name: string, role: UserRole): Promise<void> => {
     try {
       setLoading(true);
-      const userData = await AuthService.signUp(email, password, name, role);
-      setUser(userData);
+      await AuthService.signUp(email, password, name, role);
+      // Don't set user here - let onAuthStateChanged handle it
+      // This prevents race conditions between manual state update and listener
     } catch (error: any) {
-      throw error;
-    } finally {
       setLoading(false);
+      throw error;
     }
+    // Don't set loading to false here - onAuthStateChanged will do it
   };
 
   /**
@@ -66,13 +81,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
-      const userData = await AuthService.signIn(email, password);
-      setUser(userData);
+      await AuthService.signIn(email, password);
+      // Don't set user here - let onAuthStateChanged handle it
+      // This prevents race conditions between manual state update and listener
     } catch (error: any) {
-      throw error;
-    } finally {
       setLoading(false);
+      throw error;
     }
+    // Don't set loading to false here - onAuthStateChanged will do it
   };
 
   /**
@@ -109,7 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 /**
  * useAuth hook - Access authentication context
- * @throws Error if used outside of AuthProvider
+ * Error if used outside of AuthProvider
  */
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);

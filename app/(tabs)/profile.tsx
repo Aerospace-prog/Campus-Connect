@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/auth.context';
 import { useEvents } from '@/contexts/events.context';
+import { useTheme } from '@/contexts/theme.context';
 import { useRole } from '@/hooks/use-role';
 import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
@@ -27,12 +28,22 @@ interface StatCardProps {
   color?: string;
 }
 
-function StatCard({ title, value, subtitle, color = '#6366f1' }: StatCardProps) {
+function StatCard({ title, value, subtitle, color }: StatCardProps) {
+  const { colors, theme } = useTheme();
+  const accentColor = color || colors.primary;
+  
   return (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
+    <View style={[
+      styles.statCard, 
+      { 
+        borderLeftColor: accentColor,
+        backgroundColor: colors.cardBackground,
+        ...theme.shadows.sm,
+      }
+    ]}>
+      <Text style={[styles.statValue, { color: accentColor }]}>{value}</Text>
+      <Text style={[styles.statTitle, { color: colors.text }]}>{title}</Text>
+      {subtitle && <Text style={[styles.statSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>}
     </View>
   );
 }
@@ -45,9 +56,43 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { isAdmin, isStudent, loading: roleLoading } = useRole();
   const { events, myEvents } = useEvents();
+  const { colors, theme } = useTheme();
   const [adminEvents, setAdminEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+    profileHeader: { 
+      ...styles.profileHeader, 
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    avatarContainer: {
+      ...styles.avatarContainer,
+      backgroundColor: colors.primary,
+      ...theme.shadows.lg,
+    },
+    userName: { ...styles.userName, color: colors.text },
+    userEmail: { ...styles.userEmail, color: colors.textSecondary },
+    adminBadge: { ...styles.adminBadge, backgroundColor: colors.secondary },
+    studentBadge: { ...styles.studentBadge, backgroundColor: colors.primary },
+    sectionTitle: { ...styles.sectionTitle, color: colors.text },
+    statsLoadingText: { ...styles.statsLoadingText, color: colors.textSecondary },
+    notificationButton: {
+      ...styles.notificationButton,
+      backgroundColor: colors.primary,
+      ...theme.shadows.md,
+    },
+    signOutButton: {
+      ...styles.signOutButton,
+      backgroundColor: colors.error,
+      ...theme.shadows.md,
+    },
+    appInfoText: { ...styles.appInfoText, color: colors.textTertiary },
+  }), [colors, theme]);
 
   // Fetch admin-specific data when screen comes into focus
   useFocusEffect(
@@ -149,46 +194,46 @@ export default function ProfileScreen() {
   // Show loading while checking role
   if (roleLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View style={themedStyles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
+      style={themedStyles.container}
       contentContainerStyle={styles.contentContainer}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor="#6366f1"
-          colors={['#6366f1']}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
         />
       }
       showsVerticalScrollIndicator={false}
     >
       {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
+      <View style={themedStyles.profileHeader}>
+        <View style={themedStyles.avatarContainer}>
           <Text style={styles.avatarText}>
             {user?.name?.charAt(0).toUpperCase() || '?'}
           </Text>
         </View>
-        <Text style={styles.userName}>{user?.name || 'User'}</Text>
-        <Text style={styles.userEmail}>{user?.email || ''}</Text>
+        <Text style={themedStyles.userName}>{user?.name || 'User'}</Text>
+        <Text style={themedStyles.userEmail}>{user?.email || ''}</Text>
         
         {/* Admin badge - only shown for admin users (Requirements 8.2, 8.5) */}
         {isAdmin && (
-          <View style={styles.adminBadge}>
+          <View style={themedStyles.adminBadge}>
             <Text style={styles.adminBadgeText}>Event Organizer</Text>
           </View>
         )}
         
         {/* Student badge */}
         {isStudent && (
-          <View style={styles.studentBadge}>
+          <View style={themedStyles.studentBadge}>
             <Text style={styles.studentBadgeText}>Student</Text>
           </View>
         )}
@@ -196,14 +241,14 @@ export default function ProfileScreen() {
 
       {/* Statistics Section */}
       <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>
+        <Text style={themedStyles.sectionTitle}>
           {isAdmin ? 'Your Event Statistics' : 'Your Activity'}
         </Text>
         
         {loading ? (
           <View style={styles.statsLoading}>
-            <ActivityIndicator size="small" color="#6366f1" />
-            <Text style={styles.statsLoadingText}>Loading statistics...</Text>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={themedStyles.statsLoadingText}>Loading statistics...</Text>
           </View>
         ) : (
           <View style={styles.statsGrid}>
@@ -214,19 +259,19 @@ export default function ProfileScreen() {
                   title="Events RSVP'd"
                   value={studentStats.rsvpCount}
                   subtitle="Total RSVPs"
-                  color="#6366f1"
+                  color={colors.primary}
                 />
                 <StatCard
                   title="Upcoming Events"
                   value={studentStats.upcomingEvents}
                   subtitle="On your calendar"
-                  color="#10b981"
+                  color={colors.secondary}
                 />
                 <StatCard
                   title="Events Attended"
                   value={studentStats.eventsAttended}
                   subtitle="Checked in"
-                  color="#f59e0b"
+                  color={colors.warning}
                 />
               </>
             )}
@@ -238,19 +283,19 @@ export default function ProfileScreen() {
                   title="Events Created"
                   value={adminStats.eventsCreated}
                   subtitle={`${adminStats.upcomingEvents} upcoming`}
-                  color="#6366f1"
+                  color={colors.primary}
                 />
                 <StatCard
                   title="Total RSVPs"
                   value={adminStats.totalRsvps}
                   subtitle="Across all events"
-                  color="#10b981"
+                  color={colors.secondary}
                 />
                 <StatCard
                   title="Total Check-ins"
                   value={adminStats.totalCheckIns}
                   subtitle="Attendees verified"
-                  color="#f59e0b"
+                  color={colors.warning}
                 />
                 <StatCard
                   title="Attendance Rate"
@@ -266,12 +311,12 @@ export default function ProfileScreen() {
 
       {/* Actions Section */}
       <View style={styles.actionsSection}>
-        <Text style={styles.sectionTitle}>Actions</Text>
+        <Text style={themedStyles.sectionTitle}>Actions</Text>
         
         {/* Send Notification button - only for admins (Requirements 6.1, 6.2) */}
         {isAdmin && (
           <TouchableOpacity
-            style={styles.notificationButton}
+            style={themedStyles.notificationButton}
             onPress={handleSendNotification}
           >
             <Text style={styles.notificationButtonText}>Send Notification</Text>
@@ -279,7 +324,7 @@ export default function ProfileScreen() {
         )}
 
         <TouchableOpacity
-          style={styles.signOutButton}
+          style={themedStyles.signOutButton}
           onPress={handleSignOut}
         >
           <Text style={styles.signOutButtonText}>Sign Out</Text>
@@ -288,7 +333,7 @@ export default function ProfileScreen() {
 
       {/* App Info */}
       <View style={styles.appInfo}>
-        <Text style={styles.appInfoText}>CampusConnect v1.0</Text>
+        <Text style={themedStyles.appInfoText}>CampusConnect v1.0</Text>
       </View>
     </ScrollView>
   );

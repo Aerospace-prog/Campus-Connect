@@ -34,7 +34,7 @@ export function OfflineBanner(): React.ReactElement | null {
     >
       <View style={styles.modalContainer} pointerEvents="box-none">
         <View style={[styles.banner, { top: topPosition }]} pointerEvents="none">
-          <Text style={styles.text}>⚠️ You're offline</Text>
+          <Text style={styles.text}>⚠️ You&apos;re offline</Text>
         </View>
       </View>
     </Modal>

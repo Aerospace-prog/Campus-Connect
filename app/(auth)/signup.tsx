@@ -78,7 +78,6 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     setErrors({});
 
-
     if (!validateForm()) {
       return;
     }
@@ -87,8 +86,8 @@ export default function SignupScreen() {
 
     try {
       await signUp(email.trim(), password, name.trim(), selectedRole!);
+      // Navigation will happen automatically via _layout.tsx when auth state changes
     } catch (error: any) {
-
       let errorMessage = 'Failed to create account. Please try again.';
 
       if (error.message) {
@@ -108,7 +107,6 @@ export default function SignupScreen() {
 
       setErrors({ general: errorMessage });
       Alert.alert('Signup Failed', errorMessage);
-    } finally {
       setLoading(false);
     }
   };

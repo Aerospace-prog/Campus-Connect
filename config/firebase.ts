@@ -2,10 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth } from 'firebase/auth';
 import {
-  CACHE_SIZE_UNLIMITED,
   initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  memoryLocalCache,
 } from 'firebase/firestore';
 
 // Firebase configuration
@@ -21,20 +19,22 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getReactNativePersistence } = require('firebase/auth');
 
+// This ensures users stay logged in across app restarts
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
 
-// Initialize Firestore with offline persistence enabled
-// This enables automatic caching of data for offline access
-// Cache size is set to unlimited to ensure all event data is available offline
+console.log('[Firebase] Auth initialized with AsyncStorage persistence');
+
+// Initialize Firestore with memory cache for better compatibility
+// IndexedDB persistence is not available in Expo Go
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-    tabManager: persistentMultipleTabManager(),
-  }),
+  localCache: memoryLocalCache(),
 });
+
+console.log('[Firebase] Firestore initialized with memory cache');
 
 export default app;

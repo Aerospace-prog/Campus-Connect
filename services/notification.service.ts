@@ -32,9 +32,7 @@ export class NotificationService {
   private static notificationListener: Notifications.EventSubscription | null = null;
   private static responseListener: Notifications.EventSubscription | null = null;
 
-  /**
-   * Check if running in Expo Go (where push notifications are not supported since SDK 53)
-   */
+
   private static isRunningInExpoGo(): boolean {
     return Constants.appOwnership === 'expo';
   }
@@ -116,7 +114,6 @@ export class NotificationService {
 
   /**
    * Send notification to all users who RSVP'd for an event
-   * Requirements: 6.1, 6.2
    */
   static async sendToEvent(
     eventId: string,

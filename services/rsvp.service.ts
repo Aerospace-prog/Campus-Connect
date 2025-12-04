@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Event } from '../types/models';
+import { getFirebaseErrorMessage, logError, withRetry } from '../utils/error-handler';
 
 /**
  * RSVPService - Handles all RSVP-related operations
@@ -31,20 +32,26 @@ export class RSVPService {
 
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
       
-      // Verify event exists
-      const eventSnap = await getDoc(eventRef);
+      // Verify event exists with retry
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'addRSVP.getEvent', userId, additionalData: { eventId } }
+      );
       if (!eventSnap.exists()) {
         throw new Error('Event not found');
       }
 
       // Use arrayUnion to add user ID only if not already present (idempotent)
-      await updateDoc(eventRef, {
-        rsvps: arrayUnion(userId),
-        updatedAt: Timestamp.now(),
-      });
+      await withRetry(
+        () => updateDoc(eventRef, {
+          rsvps: arrayUnion(userId),
+          updatedAt: Timestamp.now(),
+        }),
+        { operation: 'addRSVP.update', userId, additionalData: { eventId } }
+      );
     } catch (error: any) {
-      console.error('Error adding RSVP:', error);
-      throw new Error(error.message || 'Failed to add RSVP');
+      logError(error, { operation: 'addRSVP', userId, additionalData: { eventId } });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -59,20 +66,26 @@ export class RSVPService {
 
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
       
-      // Verify event exists
-      const eventSnap = await getDoc(eventRef);
+      // Verify event exists with retry
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'removeRSVP.getEvent', userId, additionalData: { eventId } }
+      );
       if (!eventSnap.exists()) {
         throw new Error('Event not found');
       }
 
-      // Use arrayRemove to remove user ID
-      await updateDoc(eventRef, {
-        rsvps: arrayRemove(userId),
-        updatedAt: Timestamp.now(),
-      });
+      // Use arrayRemove to remove user ID with retry
+      await withRetry(
+        () => updateDoc(eventRef, {
+          rsvps: arrayRemove(userId),
+          updatedAt: Timestamp.now(),
+        }),
+        { operation: 'removeRSVP.update', userId, additionalData: { eventId } }
+      );
     } catch (error: any) {
-      console.error('Error removing RSVP:', error);
-      throw new Error(error.message || 'Failed to remove RSVP');
+      logError(error, { operation: 'removeRSVP', userId, additionalData: { eventId } });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -92,14 +105,17 @@ export class RSVPService {
         where('date', '>=', now)
       );
 
-      const querySnapshot = await getDocs(eventsQuery);
+      const querySnapshot = await withRetry(
+        () => getDocs(eventsQuery),
+        { operation: 'getUserRSVPs', userId }
+      );
       return querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Event[];
     } catch (error: any) {
-      console.error('Error fetching user RSVPs:', error);
-      throw new Error(error.message || 'Failed to fetch user RSVPs');
+      logError(error, { operation: 'getUserRSVPs', userId });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -113,7 +129,10 @@ export class RSVPService {
       }
 
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
-      const eventSnap = await getDoc(eventRef);
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'getEventRSVPs', additionalData: { eventId } }
+      );
 
       if (!eventSnap.exists()) {
         throw new Error('Event not found');
@@ -122,8 +141,8 @@ export class RSVPService {
       const eventData = eventSnap.data() as Event;
       return eventData.rsvps || [];
     } catch (error: any) {
-      console.error('Error fetching event RSVPs:', error);
-      throw new Error(error.message || 'Failed to fetch event RSVPs');
+      logError(error, { operation: 'getEventRSVPs', additionalData: { eventId } });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -137,7 +156,10 @@ export class RSVPService {
       }
 
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
-      const eventSnap = await getDoc(eventRef);
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'isUserRSVPd', userId, additionalData: { eventId } }
+      );
 
       if (!eventSnap.exists()) {
         return false;
@@ -146,7 +168,7 @@ export class RSVPService {
       const eventData = eventSnap.data() as Event;
       return eventData.rsvps?.includes(userId) || false;
     } catch (error: any) {
-      console.error('Error checking RSVP status:', error);
+      logError(error, { operation: 'isUserRSVPd', userId, additionalData: { eventId } });
       return false;
     }
   }

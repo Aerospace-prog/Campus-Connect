@@ -1,19 +1,20 @@
 import {
-    createUserWithEmailAndPassword,
-    signOut as firebaseSignOut,
-    User as FirebaseUser,
-    onAuthStateChanged,
-    signInWithEmailAndPassword,
-    UserCredential,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  User as FirebaseUser,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  UserCredential,
 } from 'firebase/auth';
 import {
-    doc,
-    getDoc,
-    setDoc,
-    Timestamp,
+  doc,
+  getDoc,
+  setDoc,
+  Timestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { User, UserRole } from '../types/models';
+import { getFirebaseErrorMessage, logError, withRetry } from '../utils/error-handler';
 
 /**
  * AuthService - Handles all authentication operations with Firebase
@@ -49,11 +50,16 @@ export class AuthService {
         updatedAt: Timestamp.now(),
       };
 
-      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+      // Use retry for Firestore write operation
+      await withRetry(
+        () => setDoc(doc(db, 'users', firebaseUser.uid), userData),
+        { operation: 'createUserDocument', userId: firebaseUser.uid }
+      );
 
       return userData;
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to sign up');
+      logError(error, { operation: 'signUp' });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -70,8 +76,11 @@ export class AuthService {
 
       const firebaseUser = userCredential.user;
 
-      // Fetch user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      // Fetch user data from Firestore with retry
+      const userDoc = await withRetry(
+        () => getDoc(doc(db, 'users', firebaseUser.uid)),
+        { operation: 'getUserDocument', userId: firebaseUser.uid }
+      );
 
       if (!userDoc.exists()) {
         throw new Error('User data not found');
@@ -79,7 +88,8 @@ export class AuthService {
 
       return userDoc.data() as User;
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to sign in');
+      logError(error, { operation: 'signIn' });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -90,7 +100,8 @@ export class AuthService {
     try {
       await firebaseSignOut(auth);
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to sign out');
+      logError(error, { operation: 'signOut' });
+      throw new Error(getFirebaseErrorMessage(error));
     }
   }
 
@@ -106,7 +117,10 @@ export class AuthService {
    */
   static async getUserData(uid: string): Promise<User | null> {
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
+      const userDoc = await withRetry(
+        () => getDoc(doc(db, 'users', uid)),
+        { operation: 'getUserData', userId: uid }
+      );
 
       if (!userDoc.exists()) {
         return null;
@@ -114,7 +128,7 @@ export class AuthService {
 
       return userDoc.data() as User;
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      logError(error as Error, { operation: 'getUserData', userId: uid });
       return null;
     }
   }

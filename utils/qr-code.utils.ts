@@ -1,16 +1,8 @@
 import { QRCodeData, QRValidationResult } from '@/types/models';
 
-/**
- * QR Code version constant
- */
 const QR_VERSION = '1.0';
 
-/**
- * Encode QR code data into a JSON string
- * @param userId - User ID
- * @param eventId - Event ID
- * @returns JSON string containing QR code data
- */
+
 export function encodeQRData(userId: string, eventId: string): string {
   const qrData: QRCodeData = {
     userId,
@@ -22,11 +14,7 @@ export function encodeQRData(userId: string, eventId: string): string {
   return JSON.stringify(qrData);
 }
 
-/**
- * Decode and validate QR code data from a JSON string
- * @param qrString - JSON string from QR code
- * @returns Validation result with decoded data or error
- */
+
 export function decodeQRData(qrString: string): QRValidationResult {
   try {
     const data = JSON.parse(qrString) as QRCodeData;
@@ -72,11 +60,7 @@ export function decodeQRData(qrString: string): QRValidationResult {
   }
 }
 
-/**
- * Validate QR code data structure
- * @param data - QR code data object
- * @returns True if valid, false otherwise
- */
+
 export function isValidQRData(data: any): data is QRCodeData {
   return !!(
     data &&

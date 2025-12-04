@@ -1,5 +1,6 @@
+import { useTheme } from '@/contexts/theme.context';
 import { encodeQRData } from '@/utils/qr-code.utils';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -20,12 +21,25 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   eventTitle,
   size = 250,
 }) => {
+  const { colors, theme } = useTheme();
+  
   // Generate QR code data
   const qrData = encodeQRData(userId, eventId);
 
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    qrContainer: { 
+      ...styles.qrContainer, 
+      backgroundColor: colors.surface,
+      ...theme.shadows.lg,
+    },
+    eventTitle: { ...styles.eventTitle, color: colors.text },
+    instructions: { ...styles.instructions, color: colors.textSecondary },
+  }), [colors, theme]);
+
   return (
     <View style={styles.container}>
-      <View style={styles.qrContainer}>
+      <View style={themedStyles.qrContainer}>
         <QRCode
           value={qrData}
           size={size}
@@ -35,10 +49,10 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
       </View>
       
       <View style={styles.infoContainer}>
-        <Text style={styles.eventTitle} numberOfLines={2}>
+        <Text style={themedStyles.eventTitle} numberOfLines={2}>
           {eventTitle}
         </Text>
-        <Text style={styles.instructions}>
+        <Text style={themedStyles.instructions}>
           Show this QR code at the event for check-in
         </Text>
       </View>

@@ -183,7 +183,7 @@ export function NetworkProvider({ children }: NetworkProviderProps): React.React
 
 /**
  * useNetwork hook - Access network context
- * @throws Error if used outside of NetworkProvider
+ * Error if used outside of NetworkProvider
  */
 export function useNetwork(): NetworkContextType {
   const context = useContext(NetworkContext);

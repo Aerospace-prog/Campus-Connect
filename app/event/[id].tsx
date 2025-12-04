@@ -1,23 +1,58 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTheme } from '@/contexts/theme.context';
 import { useAuth } from '@/hooks/use-auth';
 import { useEvents } from '@/hooks/use-events';
 import { Event } from '@/types/models';
 import { useLocalSearchParams } from 'expo-router';
 import { Timestamp } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const { getEventById, rsvpForEvent, cancelRSVP, isUserRSVPd } = useEvents();
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+    loadingText: { ...styles.loadingText, color: colors.textSecondary },
+    errorContainer: { ...styles.errorContainer, backgroundColor: colors.backgroundSecondary },
+    errorTitle: { ...styles.errorTitle, color: colors.text },
+    errorText: { ...styles.errorText, color: colors.textSecondary },
+    titleSection: { 
+      ...styles.titleSection, 
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    title: { ...styles.title, color: colors.text },
+    section: { ...styles.section, backgroundColor: colors.surface },
+    sectionTitle: { ...styles.sectionTitle, color: colors.text },
+    iconContainer: { ...styles.iconContainer, backgroundColor: colors.primaryLight },
+    infoLabel: { ...styles.infoLabel, color: colors.textSecondary },
+    infoValue: { ...styles.infoValue, color: colors.text },
+    description: { ...styles.description, color: colors.textSecondary },
+    statBox: { ...styles.statBox, backgroundColor: colors.backgroundTertiary },
+    statValue: { ...styles.statValue, color: colors.primary },
+    statLabel: { ...styles.statLabel, color: colors.textSecondary },
+    rsvpButtonInactive: { backgroundColor: colors.primary },
+    rsvpButtonActive: { backgroundColor: colors.error },
+    organizerBadge: {
+      ...styles.organizerBadge,
+      backgroundColor: colors.warningLight,
+      borderColor: colors.warning,
+    },
+  }), [colors, theme]);
   
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,9 +144,9 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Loading event details...</Text>
+      <View style={themedStyles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.loadingText}>Loading event details...</Text>
       </View>
     );
   }
@@ -119,10 +154,12 @@ export default function EventDetailScreen() {
  
   if (error || !event) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text style={styles.errorTitle}>Unable to Load Event</Text>
-        <Text style={styles.errorText}>
+      <View style={themedStyles.errorContainer}>
+        <View style={styles.errorIconContainer}>
+          <IconSymbol name="exclamationmark.triangle.fill" size={64} color={colors.warning} />
+        </View>
+        <Text style={themedStyles.errorTitle}>Unable to Load Event</Text>
+        <Text style={themedStyles.errorText}>
           {error || 'Event not found'}
         </Text>
       </View>
@@ -130,72 +167,72 @@ export default function EventDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={themedStyles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>{event.title}</Text>
+        <View style={themedStyles.titleSection}>
+          <Text style={themedStyles.title}>{event.title}</Text>
         </View>
 
-        <View style={styles.section}>
+        <View style={themedStyles.section}>
           <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <Text style={styles.icon}>📅</Text>
+            <View style={themedStyles.iconContainer}>
+              <IconSymbol name="calendar" size={20} color={colors.primary} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Date</Text>
-              <Text style={styles.infoValue}>{formatDate(event.date)}</Text>
+              <Text style={themedStyles.infoLabel}>Date</Text>
+              <Text style={themedStyles.infoValue}>{formatDate(event.date)}</Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <Text style={styles.icon}>🕐</Text>
+            <View style={themedStyles.iconContainer}>
+              <IconSymbol name="clock.fill" size={20} color={colors.primary} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Time</Text>
-              <Text style={styles.infoValue}>{formatTime(event.date)}</Text>
+              <Text style={themedStyles.infoLabel}>Time</Text>
+              <Text style={themedStyles.infoValue}>{formatTime(event.date)}</Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <Text style={styles.icon}>📍</Text>
+            <View style={themedStyles.iconContainer}>
+              <IconSymbol name="location.fill" size={20} color={colors.primary} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Location</Text>
-              <Text style={styles.infoValue}>{event.location}</Text>
+              <Text style={themedStyles.infoLabel}>Location</Text>
+              <Text style={themedStyles.infoValue}>{event.location}</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About This Event</Text>
-          <Text style={styles.description}>{event.description}</Text>
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.sectionTitle}>About This Event</Text>
+          <Text style={themedStyles.description}>{event.description}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Attendance</Text>
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.sectionTitle}>Attendance</Text>
           <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{event.rsvps.length}</Text>
-              <Text style={styles.statLabel}>
+            <View style={themedStyles.statBox}>
+              <Text style={themedStyles.statValue}>{event.rsvps.length}</Text>
+              <Text style={themedStyles.statLabel}>
                 {event.rsvps.length === 1 ? 'RSVP' : 'RSVPs'}
               </Text>
             </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{event.checkedIn.length}</Text>
-              <Text style={styles.statLabel}>Checked In</Text>
+            <View style={themedStyles.statBox}>
+              <Text style={themedStyles.statValue}>{event.checkedIn.length}</Text>
+              <Text style={themedStyles.statLabel}>Checked In</Text>
             </View>
           </View>
         </View>
 
         {/* Hide RSVP button for event creators - they're the organizer, not an attendee */}
         {!isEventCreator && (
-          <View style={styles.section}>
+          <View style={themedStyles.section}>
             <Pressable
               style={({ pressed }) => [
                 styles.rsvpButton,
-                isRSVPd ? styles.rsvpButtonActive : styles.rsvpButtonInactive,
+                isRSVPd ? themedStyles.rsvpButtonActive : themedStyles.rsvpButtonInactive,
                 pressed && styles.rsvpButtonPressed,
                 rsvpLoading && styles.rsvpButtonDisabled,
               ]}
@@ -203,13 +240,17 @@ export default function EventDetailScreen() {
               disabled={rsvpLoading}
             >
               {rsvpLoading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={colors.onPrimary} />
               ) : (
                 <>
-                  <Text style={styles.rsvpButtonIcon}>
-                    {isRSVPd ? '✓' : '📅'}
-                  </Text>
-                  <Text style={styles.rsvpButtonText}>
+                  <View style={styles.rsvpButtonIconContainer}>
+                    <IconSymbol 
+                      name={isRSVPd ? 'checkmark' : 'calendar'} 
+                      size={20} 
+                      color={colors.onPrimary} 
+                    />
+                  </View>
+                  <Text style={[styles.rsvpButtonText, { color: colors.onPrimary }]}>
                     {isRSVPd ? 'Cancel RSVP' : 'RSVP for Event'}
                   </Text>
                 </>
@@ -220,10 +261,12 @@ export default function EventDetailScreen() {
         
         {/* Show organizer badge for event creators */}
         {isEventCreator && (
-          <View style={styles.section}>
-            <View style={styles.organizerBadge}>
-              <Text style={styles.organizerIcon}>👑</Text>
-              <Text style={styles.organizerText}>You're organizing this event</Text>
+          <View style={themedStyles.section}>
+            <View style={themedStyles.organizerBadge}>
+              <View style={styles.organizerIconContainer}>
+                <IconSymbol name="crown.fill" size={20} color="#92400e" />
+              </View>
+              <Text style={styles.organizerText}>You are organizing this event</Text>
             </View>
           </View>
         )}
@@ -258,8 +301,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     backgroundColor: '#f9fafb',
   },
-  errorIcon: {
-    fontSize: 64,
+  errorIconContainer: {
     marginBottom: 16,
   },
   errorTitle: {
@@ -312,9 +354,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  icon: {
-    fontSize: 20,
-  },
+
   infoContent: {
     flex: 1,
     justifyContent: 'center',
@@ -379,8 +419,7 @@ const styles = StyleSheet.create({
   rsvpButtonDisabled: {
     opacity: 0.6,
   },
-  rsvpButtonIcon: {
-    fontSize: 20,
+  rsvpButtonIconContainer: {
     marginRight: 8,
   },
   rsvpButtonText: {
@@ -398,8 +437,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fcd34d',
   },
-  organizerIcon: {
-    fontSize: 20,
+  organizerIconContainer: {
     marginRight: 8,
   },
   organizerText: {

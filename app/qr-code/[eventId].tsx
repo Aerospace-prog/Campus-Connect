@@ -1,8 +1,10 @@
 import { QRCodeDisplay } from '@/components/qr-code-display';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTheme } from '@/contexts/theme.context';
 import { useAuth } from '@/hooks/use-auth';
 import { useEvents } from '@/hooks/use-events';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -21,7 +23,29 @@ export default function QRCodeScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const { myEvents, isUserRSVPd } = useEvents();
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+    loadingText: { ...styles.loadingText, color: colors.textSecondary },
+    header: { 
+      ...styles.header, 
+      backgroundColor: colors.surface,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: { ...styles.headerTitle, color: colors.text },
+    detailsContainer: { 
+      ...styles.detailsContainer, 
+      backgroundColor: colors.surface,
+      ...theme.shadows.md,
+    },
+    detailText: { ...styles.detailText, color: colors.text },
+    offlineIndicator: { ...styles.offlineIndicator, backgroundColor: colors.successLight },
+    offlineText: { ...styles.offlineText, color: colors.success },
+  }), [colors, theme]);
   
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<any>(null);
@@ -75,24 +99,24 @@ export default function QRCodeScreen() {
 
   if (loading || !event || !user) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Generating QR code...</Text>
+      <View style={themedStyles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.loadingText}>Generating QR code...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <TouchableOpacity
           style={styles.closeButton}
           onPress={handleClose}
           activeOpacity={0.7}
         >
-          <Text style={styles.closeButtonText}>✕</Text>
+          <IconSymbol name="xmark" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Event Check-in</Text>
+        <Text style={themedStyles.headerTitle}>Event Check-in</Text>
         <View style={styles.closeButton} />
       </View>
 
@@ -104,10 +128,12 @@ export default function QRCodeScreen() {
           size={250}
         />
 
-        <View style={styles.detailsContainer}>
+        <View style={themedStyles.detailsContainer}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📅</Text>
-            <Text style={styles.detailText}>
+            <View style={styles.detailIconContainer}>
+              <IconSymbol name="calendar" size={16} color={colors.textSecondary} />
+            </View>
+            <Text style={themedStyles.detailText}>
               {event.date.toDate().toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'long',
@@ -118,8 +144,10 @@ export default function QRCodeScreen() {
           </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>⏰</Text>
-            <Text style={styles.detailText}>
+            <View style={styles.detailIconContainer}>
+              <IconSymbol name="clock.fill" size={16} color={colors.textSecondary} />
+            </View>
+            <Text style={themedStyles.detailText}>
               {event.date.toDate().toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -129,15 +157,18 @@ export default function QRCodeScreen() {
           </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📍</Text>
-            <Text style={styles.detailText}>{event.location}</Text>
+            <View style={styles.detailIconContainer}>
+              <IconSymbol name="location.fill" size={16} color={colors.textSecondary} />
+            </View>
+            <Text style={themedStyles.detailText}>{event.location}</Text>
           </View>
         </View>
 
-        <View style={styles.offlineIndicator}>
-          <Text style={styles.offlineText}>
-            ✓ Works offline
-          </Text>
+        <View style={themedStyles.offlineIndicator}>
+          <View style={styles.offlineContent}>
+            <IconSymbol name="checkmark" size={14} color={colors.success} />
+            <Text style={themedStyles.offlineText}>Works offline</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -177,11 +208,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeButtonText: {
-    fontSize: 24,
-    color: '#6b7280',
-    fontWeight: '400',
-  },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -214,10 +241,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  detailIcon: {
-    fontSize: 16,
-    marginRight: 12,
+  detailIconContainer: {
     width: 24,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   detailText: {
     fontSize: 15,
@@ -231,9 +259,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#d1fae5',
     borderRadius: 8,
   },
+  offlineContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   offlineText: {
     fontSize: 13,
     color: '#065f46',
     fontWeight: '500',
+    marginLeft: 6,
   },
 });

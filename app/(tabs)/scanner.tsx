@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/contexts/theme.context';
 import { useAuth } from '@/hooks/use-auth';
 import { useEvents } from '@/hooks/use-events';
 import { useRole } from '@/hooks/use-role';
@@ -26,8 +27,45 @@ import { CheckInResult, Event } from '@/types/models';
 export default function ScannerTab() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const { isAdmin, loading: roleLoading } = useRole();
   const { events } = useEvents();
+
+  // Create themed styles for non-camera elements
+  const themedStyles = useMemo(() => ({
+    permissionContainer: { 
+      ...styles.container, 
+      ...styles.centerContent,
+      backgroundColor: colors.background,
+    },
+    permissionTitle: { ...styles.permissionTitle, color: colors.text },
+    permissionText: { ...styles.permissionText, color: colors.textSecondary },
+    permissionButton: { ...styles.permissionButton, backgroundColor: colors.primary },
+    resultCard: { ...styles.resultCard, backgroundColor: colors.surface },
+    resultTitle: { ...styles.resultTitle, color: colors.text },
+    resultUserName: { ...styles.resultUserName, color: colors.primary },
+    resultMessage: { ...styles.resultMessage, color: colors.textSecondary },
+    scanAgainButton: { ...styles.scanAgainButton, backgroundColor: colors.primary },
+    modalContent: { 
+      ...styles.modalContent, 
+      backgroundColor: colors.surface,
+    },
+    modalHeader: {
+      ...styles.modalHeader,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: { ...styles.modalTitle, color: colors.text },
+    noEventsText: { ...styles.noEventsText, color: colors.textSecondary },
+    eventItem: { ...styles.eventItem, backgroundColor: colors.backgroundSecondary },
+    eventItemSelected: { 
+      backgroundColor: colors.primaryLight,
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    eventItemTitle: { ...styles.eventItemTitle, color: colors.text },
+    eventItemDate: { ...styles.eventItemDate, color: colors.textSecondary },
+    eventItemStats: { ...styles.eventItemStats, color: colors.textTertiary },
+  }), [colors, theme]);
   
   // Camera permissions
   const [permission, requestPermission] = useCameraPermissions();
@@ -131,8 +169,8 @@ export default function ScannerTab() {
   // Show loading while checking role
   if (roleLoading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View style={themedStyles.permissionContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -145,23 +183,23 @@ export default function ScannerTab() {
   // Show permission request screen
   if (!permission) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.permissionText}>Checking camera permissions...</Text>
+      <View style={themedStyles.permissionContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.permissionText}>Checking camera permissions...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Ionicons name="camera-outline" size={64} color="#9ca3af" />
-        <Text style={styles.permissionTitle}>Camera Access Required</Text>
-        <Text style={styles.permissionText}>
+      <View style={themedStyles.permissionContainer}>
+        <Ionicons name="camera-outline" size={64} color={colors.textTertiary} />
+        <Text style={themedStyles.permissionTitle}>Camera Access Required</Text>
+        <Text style={themedStyles.permissionText}>
           We need camera access to scan QR codes for event check-ins.
         </Text>
-        <Pressable style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+        <Pressable style={themedStyles.permissionButton} onPress={requestPermission}>
+          <Text style={[styles.permissionButtonText, { color: colors.onPrimary }]}>Grant Permission</Text>
         </Pressable>
       </View>
     );
@@ -231,23 +269,23 @@ export default function ScannerTab() {
       {scanResult && (
         <View style={styles.resultOverlay}>
           <View style={[
-            styles.resultCard,
+            themedStyles.resultCard,
             scanResult.success ? styles.resultSuccess : styles.resultError
           ]}>
             <Ionicons
               name={scanResult.success ? 'checkmark-circle' : 'close-circle'}
               size={64}
-              color={scanResult.success ? '#22c55e' : '#ef4444'}
+              color={scanResult.success ? colors.success : colors.error}
             />
-            <Text style={styles.resultTitle}>
+            <Text style={themedStyles.resultTitle}>
               {scanResult.success ? 'Check-in Successful!' : 'Check-in Failed'}
             </Text>
             {scanResult.userName && (
-              <Text style={styles.resultUserName}>{scanResult.userName}</Text>
+              <Text style={themedStyles.resultUserName}>{scanResult.userName}</Text>
             )}
-            <Text style={styles.resultMessage}>{scanResult.message}</Text>
-            <Pressable style={styles.scanAgainButton} onPress={handleScanAgain}>
-              <Text style={styles.scanAgainText}>Scan Another</Text>
+            <Text style={themedStyles.resultMessage}>{scanResult.message}</Text>
+            <Pressable style={themedStyles.scanAgainButton} onPress={handleScanAgain}>
+              <Text style={[styles.scanAgainText, { color: colors.onPrimary }]}>Scan Another</Text>
             </Pressable>
           </View>
         </View>
@@ -261,40 +299,40 @@ export default function ScannerTab() {
         onRequestClose={() => setShowEventSelector(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Event</Text>
+          <View style={themedStyles.modalContent}>
+            <View style={themedStyles.modalHeader}>
+              <Text style={themedStyles.modalTitle}>Select Event</Text>
               <Pressable onPress={() => setShowEventSelector(false)}>
-                <Ionicons name="close" size={24} color="#374151" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </Pressable>
             </View>
             
             <ScrollView style={styles.eventList}>
               {adminEvents.length === 0 ? (
-                <Text style={styles.noEventsText}>
-                  You haven't created any events yet.
+                <Text style={themedStyles.noEventsText}>
+                  You have not created any events yet.
                 </Text>
               ) : (
                 adminEvents.map((event) => (
                   <Pressable
                     key={event.id}
                     style={[
-                      styles.eventItem,
-                      selectedEvent?.id === event.id && styles.eventItemSelected
+                      themedStyles.eventItem,
+                      selectedEvent?.id === event.id && themedStyles.eventItemSelected
                     ]}
                     onPress={() => handleSelectEvent(event)}
                   >
                     <View style={styles.eventItemContent}>
-                      <Text style={styles.eventItemTitle}>{event.title}</Text>
-                      <Text style={styles.eventItemDate}>
+                      <Text style={themedStyles.eventItemTitle}>{event.title}</Text>
+                      <Text style={themedStyles.eventItemDate}>
                         {event.date.toDate().toLocaleDateString()}
                       </Text>
-                      <Text style={styles.eventItemStats}>
+                      <Text style={themedStyles.eventItemStats}>
                         {event.rsvps?.length || 0} RSVPs • {event.checkedIn?.length || 0} Checked In
                       </Text>
                     </View>
                     {selectedEvent?.id === event.id && (
-                      <Ionicons name="checkmark-circle" size={24} color="#6366f1" />
+                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
                     )}
                   </Pressable>
                 ))

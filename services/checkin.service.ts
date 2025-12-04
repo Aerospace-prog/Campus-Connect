@@ -1,12 +1,13 @@
 import {
-    arrayUnion,
-    doc,
-    getDoc,
-    Timestamp,
-    updateDoc,
+  arrayUnion,
+  doc,
+  getDoc,
+  Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { AttendanceData, CheckInResult, Event, QRValidationResult, User } from '../types/models';
+import { getFirebaseErrorMessage, logError, withRetry } from '../utils/error-handler';
 import { decodeQRData } from '../utils/qr-code.utils';
 
 /**
@@ -45,9 +46,12 @@ export class CheckInService {
         };
       }
 
-      // Get event document
+      // Get event document with retry
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
-      const eventSnap = await getDoc(eventRef);
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'checkInUser.getEvent', userId, additionalData: { eventId } }
+      );
 
       if (!eventSnap.exists()) {
         return {
@@ -80,11 +84,14 @@ export class CheckInService {
       // Get user name for success message
       const userName = await this.getUserName(userId);
 
-      // Add user to checkedIn array using arrayUnion (idempotent - Requirement 5.6)
-      await updateDoc(eventRef, {
-        checkedIn: arrayUnion(userId),
-        updatedAt: Timestamp.now(),
-      });
+      // Add user to checkedIn array using arrayUnion (idempotent - Requirement 5.6) with retry
+      await withRetry(
+        () => updateDoc(eventRef, {
+          checkedIn: arrayUnion(userId),
+          updatedAt: Timestamp.now(),
+        }),
+        { operation: 'checkInUser.update', userId, additionalData: { eventId } }
+      );
 
       return {
         success: true,
@@ -92,10 +99,10 @@ export class CheckInService {
         userName: userName || undefined,
       };
     } catch (error: any) {
-      console.error('Error checking in user:', error);
+      logError(error, { operation: 'checkInUser', userId, additionalData: { eventId } });
       return {
         success: false,
-        message: error.message || 'Failed to check in user',
+        message: getFirebaseErrorMessage(error),
       };
     }
   }
@@ -114,7 +121,10 @@ export class CheckInService {
       }
 
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
-      const eventSnap = await getDoc(eventRef);
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'getCheckInStatus', userId, additionalData: { eventId } }
+      );
 
       if (!eventSnap.exists()) {
         return false;
@@ -123,7 +133,7 @@ export class CheckInService {
       const eventData = eventSnap.data() as Event;
       return eventData.checkedIn?.includes(userId) || false;
     } catch (error: any) {
-      console.error('Error checking check-in status:', error);
+      logError(error, { operation: 'getCheckInStatus', userId, additionalData: { eventId } });
       return false;
     }
   }
@@ -140,7 +150,10 @@ export class CheckInService {
       }
 
       const eventRef = doc(db, this.EVENTS_COLLECTION, eventId);
-      const eventSnap = await getDoc(eventRef);
+      const eventSnap = await withRetry(
+        () => getDoc(eventRef),
+        { operation: 'getEventAttendance', additionalData: { eventId } }
+      );
 
       if (!eventSnap.exists()) {
         return null;
@@ -161,7 +174,7 @@ export class CheckInService {
         checkedInUsers,
       };
     } catch (error: any) {
-      console.error('Error getting event attendance:', error);
+      logError(error, { operation: 'getEventAttendance', additionalData: { eventId } });
       return null;
     }
   }
@@ -174,7 +187,10 @@ export class CheckInService {
   private static async getUserName(userId: string): Promise<string | null> {
     try {
       const userRef = doc(db, this.USERS_COLLECTION, userId);
-      const userSnap = await getDoc(userRef);
+      const userSnap = await withRetry(
+        () => getDoc(userRef),
+        { operation: 'getUserName', userId }
+      );
 
       if (!userSnap.exists()) {
         return null;
@@ -183,7 +199,7 @@ export class CheckInService {
       const userData = userSnap.data() as User;
       return userData.name;
     } catch (error) {
-      console.error('Error fetching user name:', error);
+      logError(error as Error, { operation: 'getUserName', userId });
       return null;
     }
   }

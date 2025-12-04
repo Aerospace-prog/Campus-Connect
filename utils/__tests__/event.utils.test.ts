@@ -15,7 +15,8 @@ const createMockTimestamp = (date: Date): Timestamp => ({
   nanoseconds: 0,
   isEqual: () => false,
   valueOf: () => '',
-} as Timestamp);
+  toJSON: () => ({ seconds: Math.floor(date.getTime() / 1000), nanoseconds: 0, type: 'timestamp' }),
+} as unknown as Timestamp);
 
 // Helper to create a mock Event
 const createMockEvent = (id: string, date: Date, rsvps: string[] = [], checkedIn: string[] = []): Event => ({

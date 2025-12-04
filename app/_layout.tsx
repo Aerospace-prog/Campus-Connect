@@ -1,23 +1,29 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
+} from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 
+import { ErrorBoundary } from '@/components/error-boundary';
 import { OfflineBanner } from '@/components/offline-banner';
 import { AuthProvider, useAuth } from '@/contexts/auth.context';
 import { EventsProvider } from '@/contexts/events.context';
 import { NetworkProvider } from '@/contexts/network.context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ThemeProvider, useTheme } from '@/contexts/theme.context';
 import { NotificationService } from '@/services/notification.service';
+import { logError } from '@/utils/error-handler';
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { isDark, colors } = useTheme();
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -63,19 +69,20 @@ function RootLayoutNav() {
   }, [user, loading, segments, router]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <View style={{ flex: 1 }}>
+    <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <OfflineBanner />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(admin)" options={{ headerShown: false }} />
           <Stack.Screen 
             name="event/[id]" 
             options={{ 
               presentation: 'modal', 
               title: 'Event Details',
               headerShown: true,
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.text,
             }} 
           />
           <Stack.Screen 
@@ -84,8 +91,8 @@ function RootLayoutNav() {
               presentation: 'modal', 
               title: 'Create Event',
               headerShown: true,
-              headerStyle: { backgroundColor: '#6366f1' },
-              headerTintColor: '#fff',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: colors.onPrimary,
             }} 
           />
           <Stack.Screen 
@@ -94,8 +101,8 @@ function RootLayoutNav() {
               presentation: 'modal', 
               title: 'Edit Event',
               headerShown: true,
-              headerStyle: { backgroundColor: '#6366f1' },
-              headerTintColor: '#fff',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: colors.onPrimary,
             }} 
           />
           <Stack.Screen 
@@ -104,26 +111,37 @@ function RootLayoutNav() {
               presentation: 'modal', 
               title: 'Send Notification',
               headerShown: true,
-              headerStyle: { backgroundColor: '#6366f1' },
-              headerTintColor: '#fff',
+              headerStyle: { backgroundColor: colors.primary },
+              headerTintColor: colors.onPrimary,
             }} 
           />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+
         </Stack>
-        <StatusBar style="auto" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
       </View>
-    </ThemeProvider>
+    </NavigationThemeProvider>
   );
 }
 
 export default function RootLayout() {
+  const handleRootError = (error: Error) => {
+    logError(error, {
+      screen: 'RootLayout',
+      operation: 'render',
+    });
+  };
+
   return (
-    <NetworkProvider>
-      <AuthProvider>
-        <EventsProvider>
-          <RootLayoutNav />
-        </EventsProvider>
-      </AuthProvider>
-    </NetworkProvider>
+    <ErrorBoundary screenName="RootLayout" onError={handleRootError}>
+      <ThemeProvider>
+        <NetworkProvider>
+          <AuthProvider>
+            <EventsProvider>
+              <RootLayoutNav />
+            </EventsProvider>
+          </AuthProvider>
+        </NetworkProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

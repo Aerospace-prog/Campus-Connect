@@ -1,21 +1,22 @@
 import { useAuth } from '@/contexts/auth.context';
+import { useTheme } from '@/contexts/theme.context';
 import { useRole } from '@/hooks/use-role';
 import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface FormErrors {
@@ -32,7 +33,49 @@ export default function EditEventScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const { isAdmin, loading: roleLoading } = useRole();
+
+  // Create themed styles
+  const themedStyles = useMemo(() => ({
+    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+    loadingText: { ...styles.loadingText, color: colors.textSecondary },
+    statsCard: { 
+      ...styles.statsCard, 
+      backgroundColor: colors.surface,
+      ...theme.shadows.md,
+    },
+    statValue: { ...styles.statValue, color: colors.primary },
+    statLabel: { ...styles.statLabel, color: colors.textSecondary },
+    statDivider: { ...styles.statDivider, backgroundColor: colors.border },
+    label: { ...styles.label, color: colors.text },
+    input: { 
+      ...styles.input, 
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+    inputError: { borderColor: colors.error },
+    errorText: { ...styles.errorText, color: colors.error },
+    pickerButton: {
+      ...styles.pickerButton,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    pickerButtonText: { ...styles.pickerButtonText, color: colors.text },
+    saveButton: { 
+      ...styles.saveButton, 
+      backgroundColor: colors.primary,
+      ...theme.shadows.md,
+    },
+    deleteButton: {
+      ...styles.deleteButton,
+      backgroundColor: colors.surface,
+      borderColor: colors.error,
+    },
+    deleteButtonText: { ...styles.deleteButtonText, color: colors.error },
+  }), [colors, theme]);
   
   const [event, setEvent] = useState<Event | null>(null);
   const [title, setTitle] = useState('');
@@ -198,9 +241,9 @@ export default function EditEventScreen() {
 
   if (roleLoading || loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Loading event...</Text>
+      <View style={themedStyles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={themedStyles.loadingText}>Loading event...</Text>
       </View>
     );
   }
@@ -209,7 +252,7 @@ export default function EditEventScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={themedStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -218,26 +261,26 @@ export default function EditEventScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {event && (
-          <View style={styles.statsCard}>
+          <View style={themedStyles.statsCard}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{event.rsvps.length}</Text>
-              <Text style={styles.statLabel}>RSVPs</Text>
+              <Text style={themedStyles.statValue}>{event.rsvps.length}</Text>
+              <Text style={themedStyles.statLabel}>RSVPs</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={themedStyles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{event.checkedIn.length}</Text>
-              <Text style={styles.statLabel}>Checked In</Text>
+              <Text style={themedStyles.statValue}>{event.checkedIn.length}</Text>
+              <Text style={themedStyles.statLabel}>Checked In</Text>
             </View>
           </View>
         )}
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Event Title *</Text>
+            <Text style={themedStyles.label}>Event Title *</Text>
             <TextInput
-              style={[styles.input, errors.title && styles.inputError]}
+              style={[themedStyles.input, errors.title && themedStyles.inputError]}
               placeholder="Enter event title"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.placeholder}
               value={title}
               onChangeText={(text) => {
                 setTitle(text);
@@ -245,15 +288,15 @@ export default function EditEventScreen() {
               }}
               maxLength={100}
             />
-            {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+            {errors.title && <Text style={themedStyles.errorText}>{errors.title}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description *</Text>
+            <Text style={themedStyles.label}>Description *</Text>
             <TextInput
-              style={[styles.input, styles.textArea, errors.description && styles.inputError]}
+              style={[themedStyles.input, styles.textArea, errors.description && themedStyles.inputError]}
               placeholder="Describe your event"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.placeholder}
               value={description}
               onChangeText={(text) => {
                 setDescription(text);
@@ -264,36 +307,36 @@ export default function EditEventScreen() {
               textAlignVertical="top"
               maxLength={500}
             />
-            {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+            {errors.description && <Text style={themedStyles.errorText}>{errors.description}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date *</Text>
+            <Text style={themedStyles.label}>Date *</Text>
             <TouchableOpacity
-              style={[styles.pickerButton, errors.date && styles.inputError]}
+              style={[themedStyles.pickerButton, errors.date && themedStyles.inputError]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.pickerButtonText}>📅 {formatDate(date)}</Text>
+              <Text style={themedStyles.pickerButtonText}>📅 {formatDate(date)}</Text>
             </TouchableOpacity>
-            {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
+            {errors.date && <Text style={themedStyles.errorText}>{errors.date}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Time *</Text>
+            <Text style={themedStyles.label}>Time *</Text>
             <TouchableOpacity
-              style={styles.pickerButton}
+              style={themedStyles.pickerButton}
               onPress={() => setShowTimePicker(true)}
             >
-              <Text style={styles.pickerButtonText}>🕐 {formatTime(date)}</Text>
+              <Text style={themedStyles.pickerButtonText}>🕐 {formatTime(date)}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Location *</Text>
+            <Text style={themedStyles.label}>Location *</Text>
             <TextInput
-              style={[styles.input, errors.location && styles.inputError]}
+              style={[themedStyles.input, errors.location && themedStyles.inputError]}
               placeholder="Enter event location"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.placeholder}
               value={location}
               onChangeText={(text) => {
                 setLocation(text);
@@ -301,27 +344,27 @@ export default function EditEventScreen() {
               }}
               maxLength={100}
             />
-            {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
+            {errors.location && <Text style={themedStyles.errorText}>{errors.location}</Text>}
           </View>
 
           <TouchableOpacity
-            style={[styles.saveButton, saving && styles.buttonDisabled]}
+            style={[themedStyles.saveButton, saving && styles.buttonDisabled]}
             onPress={handleSave}
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
+              <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>Save Changes</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.deleteButton, saving && styles.buttonDisabled]}
+            style={[themedStyles.deleteButton, saving && styles.buttonDisabled]}
             onPress={handleDelete}
             disabled={saving}
           >
-            <Text style={styles.deleteButtonText}>Delete Event</Text>
+            <Text style={themedStyles.deleteButtonText}>Delete Event</Text>
           </TouchableOpacity>
         </View>
 
