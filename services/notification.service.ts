@@ -153,6 +153,7 @@ export class NotificationService {
         usersSnap.docs.forEach((doc) => {
           const userData = doc.data() as User;
           if (userData.pushToken) {
+            console.log(`User ${userData.uid} has token: ${userData.pushToken.substring(0, 30)}...`);
             pushTokens.push(userData.pushToken);
           } else {
             usersWithoutTokens++;
