@@ -104,19 +104,37 @@ export default function SendNotificationScreen() {
               );
 
               if (result.success) {
+                // Build detailed message
+                let statusMessage = `Notification sent to ${result.sentCount} user${result.sentCount !== 1 ? 's' : ''}`;
+                
+                const issues: string[] = [];
+                if (result.failedCount > 0) {
+                  issues.push(`${result.failedCount} delivery failed`);
+                }
+                if (result.noTokenCount && result.noTokenCount > 0) {
+                  issues.push(`${result.noTokenCount} users have notifications disabled`);
+                }
+                
+                if (issues.length > 0) {
+                  statusMessage += `\n\n${issues.join('\n')}`;
+                }
+
+                // Log errors for debugging
+                if (result.errors && result.errors.length > 0) {
+                  console.log('Notification errors:', result.errors);
+                }
+
                 Alert.alert(
-                  'Success',
-                  `Notification sent to ${result.sentCount} user${result.sentCount !== 1 ? 's' : ''}${
-                    result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''
-                  }`,
+                  result.sentCount > 0 ? 'Sent' : 'Notice',
+                  statusMessage,
                   [{ text: 'OK', onPress: () => router.back() }]
                 );
               } else {
-                Alert.alert('Error', 'Failed to send notifications');
+                Alert.alert('Error', 'Failed to send notifications. Please try again.');
               }
             } catch (error) {
               console.error('Error sending notification:', error);
-              Alert.alert('Error', 'Failed to send notification');
+              Alert.alert('Error', 'Failed to send notification. Check your connection and try again.');
             } finally {
               setLoading(false);
             }

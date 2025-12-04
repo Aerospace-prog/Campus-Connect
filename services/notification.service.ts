@@ -119,7 +119,7 @@ export class NotificationService {
     eventId: string,
     title: string,
     message: string
-  ): Promise<{ success: boolean; sentCount: number; failedCount: number }> {
+  ): Promise<{ success: boolean; sentCount: number; failedCount: number; noTokenCount?: number; errors?: string[] }> {
     try {
       // Get the event to find RSVP'd users
       const eventRef = doc(db, 'events', eventId);
@@ -138,6 +138,7 @@ export class NotificationService {
 
       // Get push tokens for all RSVP'd users
       const pushTokens: string[] = [];
+      let usersWithoutTokens = 0;
       
       // Firestore 'in' queries are limited to 30 items, so we batch
       const batchSize = 30;
@@ -153,18 +154,39 @@ export class NotificationService {
           const userData = doc.data() as User;
           if (userData.pushToken) {
             pushTokens.push(userData.pushToken);
+          } else {
+            usersWithoutTokens++;
+            console.log(`User ${userData.uid} has no push token registered`);
           }
         });
       }
 
-      if (pushTokens.length === 0) {
-        return { success: true, sentCount: 0, failedCount: 0 };
+      // Track users not found in database
+      const foundUserCount = pushTokens.length + usersWithoutTokens;
+      const notFoundCount = rsvpUserIds.length - foundUserCount;
+      if (notFoundCount > 0) {
+        console.warn(`${notFoundCount} RSVP'd users not found in database`);
       }
+
+      if (pushTokens.length === 0) {
+        return { 
+          success: true, 
+          sentCount: 0, 
+          failedCount: 0,
+          noTokenCount: usersWithoutTokens + notFoundCount,
+          errors: usersWithoutTokens > 0 ? ['Some users have not enabled push notifications'] : undefined
+        };
+      }
+
+      console.log(`Sending notifications to ${pushTokens.length} tokens (${usersWithoutTokens} users without tokens)`);
 
       // Send notifications using Expo Push API
       const results = await this.sendPushNotifications(pushTokens, title, message, { eventId });
 
-      return results;
+      return {
+        ...results,
+        noTokenCount: usersWithoutTokens + notFoundCount
+      };
     } catch (error) {
       console.error('Error sending notifications to event:', error);
       throw new Error('Failed to send notifications');
@@ -212,13 +234,37 @@ export class NotificationService {
     title: string,
     body: string,
     data?: { eventId?: string }
-  ): Promise<{ success: boolean; sentCount: number; failedCount: number }> {
-    const messages = pushTokens.map((token) => ({
+  ): Promise<{ success: boolean; sentCount: number; failedCount: number; errors?: string[] }> {
+    // Filter out invalid tokens before sending
+    const validTokens = pushTokens.filter(token => {
+      // Expo push tokens should start with 'ExponentPushToken[' or be a valid format
+      const isValid = token && (
+        token.startsWith('ExponentPushToken[') || 
+        token.startsWith('ExpoPushToken[')
+      );
+      if (!isValid) {
+        console.warn('Invalid push token format:', token?.substring(0, 20) + '...');
+      }
+      return isValid;
+    });
+
+    if (validTokens.length === 0) {
+      console.log('No valid push tokens to send to');
+      return { 
+        success: true, 
+        sentCount: 0, 
+        failedCount: pushTokens.length,
+        errors: ['No valid push tokens found. Users may need to re-register for notifications.']
+      };
+    }
+
+    const messages = validTokens.map((token) => ({
       to: token,
       sound: 'default' as const,
       title,
       body,
       data: data || {},
+      priority: 'high' as const,
     }));
 
     try {
@@ -234,25 +280,42 @@ export class NotificationService {
       });
 
       const result = await response.json();
+      console.log('Expo Push API response:', JSON.stringify(result, null, 2));
 
-      // Count successes and failures
+      // Count successes and failures with detailed error tracking
       let sentCount = 0;
-      let failedCount = 0;
+      let failedCount = pushTokens.length - validTokens.length; // Start with invalid tokens
+      const errors: string[] = [];
 
       if (result.data) {
-        result.data.forEach((item: { status: string }) => {
+        result.data.forEach((item: { status: string; message?: string; details?: { error?: string } }, index: number) => {
           if (item.status === 'ok') {
             sentCount++;
           } else {
             failedCount++;
+            const errorMsg = item.details?.error || item.message || 'Unknown error';
+            console.error(`Push notification failed for token ${index}:`, errorMsg);
+            errors.push(errorMsg);
+            
+            // Log specific error types for debugging
+            if (item.details?.error === 'DeviceNotRegistered') {
+              console.warn('Device not registered - token may be stale and should be removed');
+            } else if (item.details?.error === 'InvalidCredentials') {
+              console.error('Invalid credentials - check Expo project configuration');
+            }
           }
         });
       }
 
-      return { success: true, sentCount, failedCount };
+      return { success: true, sentCount, failedCount, errors: errors.length > 0 ? errors : undefined };
     } catch (error) {
       console.error('Error sending push notifications:', error);
-      return { success: false, sentCount: 0, failedCount: pushTokens.length };
+      return { 
+        success: false, 
+        sentCount: 0, 
+        failedCount: pushTokens.length,
+        errors: [error instanceof Error ? error.message : 'Network error']
+      };
     }
   }
 
