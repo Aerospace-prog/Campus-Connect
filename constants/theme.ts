@@ -442,6 +442,27 @@ export const durations = {
   fast: 150,
   normal: 300,
   slow: 500,
+  slower: 800,
+};
+
+// Animation Easing (for use with Animated API)
+export const easings = {
+  easeInOut: [0.42, 0, 0.58, 1],
+  easeOut: [0, 0, 0.58, 1],
+  easeIn: [0.42, 0, 1, 1],
+  spring: { damping: 15, stiffness: 150 },
+  bounce: { damping: 8, stiffness: 180 },
+  gentle: { damping: 20, stiffness: 120 },
+};
+
+// Gradient Presets
+export const gradients = {
+  primary: ['#6366f1', '#8b5cf6'],
+  secondary: ['#10b981', '#34d399'],
+  sunset: ['#f59e0b', '#ef4444'],
+  ocean: ['#3b82f6', '#06b6d4'],
+  purple: ['#8b5cf6', '#ec4899'],
+  dark: ['#1f2937', '#374151'],
 };
 
 // Touch Target Sizes (Accessibility)

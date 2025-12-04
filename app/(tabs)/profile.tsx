@@ -1,3 +1,5 @@
+import { AnimatedCounter, FadeInView } from '@/components/animated-components';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth.context';
 import { useEvents } from '@/contexts/events.context';
 import { useTheme } from '@/contexts/theme.context';
@@ -6,95 +8,94 @@ import { EventService } from '@/services/event.service';
 import { Event } from '@/types/models';
 import { isEventPast } from '@/utils/event.utils';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
+    Platform,
+    Pressable,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 
-/**
- * Statistics card component for displaying profile stats
- */
 interface StatCardProps {
   title: string;
   value: number | string;
   subtitle?: string;
-  color?: string;
+  icon: string;
+  gradientColors: [string, string];
+  delay?: number;
 }
 
-function StatCard({ title, value, subtitle, color }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  gradientColors,
+  delay = 0,
+}: StatCardProps) {
   const { colors, theme } = useTheme();
-  const accentColor = color || colors.primary;
-  
+
   return (
-    <View style={[
-      styles.statCard, 
-      { 
-        borderLeftColor: accentColor,
-        backgroundColor: colors.cardBackground,
-        ...theme.shadows.sm,
-      }
-    ]}>
-      <Text style={[styles.statValue, { color: accentColor }]}>{value}</Text>
-      <Text style={[styles.statTitle, { color: colors.text }]}>{title}</Text>
-      {subtitle && <Text style={[styles.statSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>}
-    </View>
+    <FadeInView delay={delay} direction="up" distance={15}>
+      <View style={[styles.statCard, { backgroundColor: colors.cardBackground }, theme.shadows.sm]}>
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.statIconContainer}
+        >
+          <IconSymbol name={icon as any} size={20} color="#fff" />
+        </LinearGradient>
+        <View style={styles.statContent}>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {typeof value === 'number' ? <AnimatedCounter value={value} /> : value}
+          </Text>
+          <Text style={[styles.statTitle, { color: colors.textSecondary }]}>{title}</Text>
+          {subtitle && (
+            <Text style={[styles.statSubtitle, { color: colors.textTertiary }]}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+      </View>
+    </FadeInView>
   );
 }
 
-/**
- * ProfileScreen - Displays user profile with role-specific statistics
- * Requirements: 1.2, 8.2
- */
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { isAdmin, isStudent, loading: roleLoading } = useRole();
   const { events, myEvents } = useEvents();
-  const { colors, theme } = useTheme();
+  const { colors, theme, isDark } = useTheme();
   const [adminEvents, setAdminEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Create themed styles
-  const themedStyles = useMemo(() => ({
-    container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
-    loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
-    profileHeader: { 
-      ...styles.profileHeader, 
-      backgroundColor: colors.surface,
-      borderBottomColor: colors.border,
-    },
-    avatarContainer: {
-      ...styles.avatarContainer,
-      backgroundColor: colors.primary,
-      ...theme.shadows.lg,
-    },
-    userName: { ...styles.userName, color: colors.text },
-    userEmail: { ...styles.userEmail, color: colors.textSecondary },
-    adminBadge: { ...styles.adminBadge, backgroundColor: colors.secondary },
-    studentBadge: { ...styles.studentBadge, backgroundColor: colors.primary },
-    sectionTitle: { ...styles.sectionTitle, color: colors.text },
-    statsLoadingText: { ...styles.statsLoadingText, color: colors.textSecondary },
-    notificationButton: {
-      ...styles.notificationButton,
-      backgroundColor: colors.primary,
-      ...theme.shadows.md,
-    },
-    signOutButton: {
-      ...styles.signOutButton,
-      backgroundColor: colors.error,
-      ...theme.shadows.md,
-    },
-    appInfoText: { ...styles.appInfoText, color: colors.textTertiary },
-  }), [colors, theme]);
+  // Animations
+  const signOutScale = useRef(new Animated.Value(1)).current;
+  const notificationScale = useRef(new Animated.Value(1)).current;
 
-  // Fetch admin-specific data when screen comes into focus
+  const themedStyles = useMemo(
+    () => ({
+      container: { ...styles.container, backgroundColor: colors.backgroundSecondary },
+      loadingContainer: { ...styles.loadingContainer, backgroundColor: colors.backgroundSecondary },
+      userName: { ...styles.userName, color: '#fff' },
+      userEmail: { ...styles.userEmail, color: 'rgba(255,255,255,0.8)' },
+      sectionTitle: { ...styles.sectionTitle, color: colors.text },
+      statsLoadingText: { ...styles.statsLoadingText, color: colors.textSecondary },
+      appInfoText: { ...styles.appInfoText, color: colors.textTertiary },
+    }),
+    [colors]
+  );
+
   useFocusEffect(
     useCallback(() => {
       if (isAdmin && user) {
@@ -105,7 +106,7 @@ export default function ProfileScreen() {
 
   const fetchAdminData = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       const createdEvents = await EventService.getEventsByCreator(user.uid);
@@ -125,61 +126,45 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [isAdmin, user]);
 
-  // Student statistics
   const studentStats = useMemo(() => {
     if (!isStudent) return null;
 
     const rsvpCount = myEvents.length;
-    const upcomingEvents = myEvents.filter(e => !isEventPast(e.date)).length;
-    
-    // Count events where user has checked in
+    const upcomingEvents = myEvents.filter((e) => !isEventPast(e.date)).length;
     const eventsAttended = events.filter(
-      e => user && e.checkedIn.includes(user.uid)
+      (e) => user && e.checkedIn.includes(user.uid)
     ).length;
 
-    return {
-      rsvpCount,
-      upcomingEvents,
-      eventsAttended,
-    };
+    return { rsvpCount, upcomingEvents, eventsAttended };
   }, [isStudent, myEvents, events, user]);
 
-  // Admin statistics
   const adminStats = useMemo(() => {
     if (!isAdmin) return null;
 
     const eventsCreated = adminEvents.length;
-    const upcomingEvents = adminEvents.filter(e => !isEventPast(e.date)).length;
-    const pastEvents = adminEvents.filter(e => isEventPast(e.date)).length;
-    
-    // Total RSVPs across all admin's events
+    const upcomingEvents = adminEvents.filter((e) => !isEventPast(e.date)).length;
     const totalRsvps = adminEvents.reduce((sum, e) => sum + e.rsvps.length, 0);
-    
-    // Total check-ins across all admin's events
     const totalCheckIns = adminEvents.reduce((sum, e) => sum + e.checkedIn.length, 0);
-    
-    // Calculate attendance rate for past events
-    const pastEventsWithRsvps = adminEvents.filter(
-      e => isEventPast(e.date) && e.rsvps.length > 0
-    );
-    const attendanceRate = pastEventsWithRsvps.length > 0
-      ? Math.round(
-          (pastEventsWithRsvps.reduce((sum, e) => sum + e.checkedIn.length, 0) /
-           pastEventsWithRsvps.reduce((sum, e) => sum + e.rsvps.length, 0)) * 100
-        )
-      : 0;
 
-    return {
-      eventsCreated,
-      upcomingEvents,
-      pastEvents,
-      totalRsvps,
-      totalCheckIns,
-      attendanceRate,
-    };
+    const pastEventsWithRsvps = adminEvents.filter(
+      (e) => isEventPast(e.date) && e.rsvps.length > 0
+    );
+    const attendanceRate =
+      pastEventsWithRsvps.length > 0
+        ? Math.round(
+            (pastEventsWithRsvps.reduce((sum, e) => sum + e.checkedIn.length, 0) /
+              pastEventsWithRsvps.reduce((sum, e) => sum + e.rsvps.length, 0)) *
+              100
+          )
+        : 0;
+
+    return { eventsCreated, upcomingEvents, totalRsvps, totalCheckIns, attendanceRate };
   }, [isAdmin, adminEvents]);
 
   const handleSignOut = async () => {
+    if (Platform.OS === 'ios') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
     try {
       await signOut();
     } catch (error) {
@@ -188,10 +173,20 @@ export default function ProfileScreen() {
   };
 
   const handleSendNotification = () => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     router.push('/send-notification' as any);
   };
 
-  // Show loading while checking role
+  const animateButton = (anim: Animated.Value, pressed: boolean) => {
+    Animated.spring(anim, {
+      toValue: pressed ? 0.97 : 1,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
+  };
+
   if (roleLoading) {
     return (
       <View style={themedStyles.loadingContainer}>
@@ -215,36 +210,66 @@ export default function ProfileScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Profile Header */}
-      <View style={themedStyles.profileHeader}>
-        <View style={themedStyles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {user?.name?.charAt(0).toUpperCase() || '?'}
-          </Text>
+      <LinearGradient
+        colors={
+          isAdmin
+            ? isDark
+              ? ['#047857', '#10b981']
+              : ['#10b981', '#34d399']
+            : isDark
+            ? ['#4338ca', '#6366f1']
+            : ['#6366f1', '#8b5cf6']
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.profileHeader}
+      >
+        <View style={styles.headerDecoration}>
+          <View style={[styles.decorCircle, styles.decorCircle1]} />
+          <View style={[styles.decorCircle, styles.decorCircle2]} />
         </View>
-        <Text style={themedStyles.userName}>{user?.name || 'User'}</Text>
-        <Text style={themedStyles.userEmail}>{user?.email || ''}</Text>
-        
-        {/* Admin badge - only shown for admin users (Requirements 8.2, 8.5) */}
-        {isAdmin && (
-          <View style={themedStyles.adminBadge}>
-            <Text style={styles.adminBadgeText}>Event Organizer</Text>
+
+        <FadeInView delay={100} direction="up">
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {user?.name?.charAt(0).toUpperCase() || '?'}
+            </Text>
           </View>
-        )}
-        
-        {/* Student badge */}
-        {isStudent && (
-          <View style={themedStyles.studentBadge}>
-            <Text style={styles.studentBadgeText}>Student</Text>
+        </FadeInView>
+
+        <FadeInView delay={200} direction="up">
+          <Text style={themedStyles.userName}>{user?.name || 'User'}</Text>
+        </FadeInView>
+
+        <FadeInView delay={250} direction="up">
+          <Text style={themedStyles.userEmail}>{user?.email || ''}</Text>
+        </FadeInView>
+
+        <FadeInView delay={300} direction="up">
+          <View
+            style={[
+              styles.roleBadge,
+              { backgroundColor: 'rgba(255,255,255,0.2)' },
+            ]}
+          >
+            <IconSymbol
+              name={isAdmin ? 'star.fill' : 'person.fill'}
+              size={14}
+              color="#fff"
+            />
+            <Text style={styles.roleBadgeText}>
+              {isAdmin ? 'Event Organizer' : 'Student'}
+            </Text>
           </View>
-        )}
-      </View>
+        </FadeInView>
+      </LinearGradient>
 
       {/* Statistics Section */}
       <View style={styles.statsSection}>
         <Text style={themedStyles.sectionTitle}>
           {isAdmin ? 'Your Event Statistics' : 'Your Activity'}
         </Text>
-        
+
         {loading ? (
           <View style={styles.statsLoading}>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -252,56 +277,68 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <View style={styles.statsGrid}>
-            {/* Student Statistics */}
             {isStudent && studentStats && (
               <>
                 <StatCard
                   title="Events RSVP'd"
                   value={studentStats.rsvpCount}
                   subtitle="Total RSVPs"
-                  color={colors.primary}
+                  icon="ticket.fill"
+                  gradientColors={['#6366f1', '#8b5cf6']}
+                  delay={100}
                 />
                 <StatCard
-                  title="Upcoming Events"
+                  title="Upcoming"
                   value={studentStats.upcomingEvents}
                   subtitle="On your calendar"
-                  color={colors.secondary}
+                  icon="calendar"
+                  gradientColors={['#10b981', '#34d399']}
+                  delay={150}
                 />
                 <StatCard
-                  title="Events Attended"
+                  title="Attended"
                   value={studentStats.eventsAttended}
                   subtitle="Checked in"
-                  color={colors.warning}
+                  icon="checkmark.circle.fill"
+                  gradientColors={['#f59e0b', '#fbbf24']}
+                  delay={200}
                 />
               </>
             )}
 
-            {/* Admin Statistics */}
             {isAdmin && adminStats && (
               <>
                 <StatCard
                   title="Events Created"
                   value={adminStats.eventsCreated}
                   subtitle={`${adminStats.upcomingEvents} upcoming`}
-                  color={colors.primary}
+                  icon="square.grid.2x2"
+                  gradientColors={['#6366f1', '#8b5cf6']}
+                  delay={100}
                 />
                 <StatCard
                   title="Total RSVPs"
                   value={adminStats.totalRsvps}
                   subtitle="Across all events"
-                  color={colors.secondary}
+                  icon="person.2.fill"
+                  gradientColors={['#10b981', '#34d399']}
+                  delay={150}
                 />
                 <StatCard
-                  title="Total Check-ins"
+                  title="Check-ins"
                   value={adminStats.totalCheckIns}
                   subtitle="Attendees verified"
-                  color={colors.warning}
+                  icon="checkmark.circle.fill"
+                  gradientColors={['#f59e0b', '#fbbf24']}
+                  delay={200}
                 />
                 <StatCard
-                  title="Attendance Rate"
+                  title="Attendance"
                   value={`${adminStats.attendanceRate}%`}
                   subtitle="For past events"
-                  color="#8b5cf6"
+                  icon="chart.bar.fill"
+                  gradientColors={['#8b5cf6', '#ec4899']}
+                  delay={250}
                 />
               </>
             )}
@@ -312,23 +349,52 @@ export default function ProfileScreen() {
       {/* Actions Section */}
       <View style={styles.actionsSection}>
         <Text style={themedStyles.sectionTitle}>Actions</Text>
-        
-        {/* Send Notification button - only for admins (Requirements 6.1, 6.2) */}
+
         {isAdmin && (
-          <TouchableOpacity
-            style={themedStyles.notificationButton}
-            onPress={handleSendNotification}
-          >
-            <Text style={styles.notificationButtonText}>Send Notification</Text>
-          </TouchableOpacity>
+          <FadeInView delay={300} direction="up">
+            <Pressable
+              onPressIn={() => animateButton(notificationScale, true)}
+              onPressOut={() => animateButton(notificationScale, false)}
+              onPress={handleSendNotification}
+            >
+              <Animated.View style={{ transform: [{ scale: notificationScale }] }}>
+                <LinearGradient
+                  colors={['#6366f1', '#8b5cf6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.actionButton, theme.shadows.md]}
+                >
+                  <IconSymbol name="bell.fill" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Send Notification</Text>
+                  <IconSymbol name="chevron.right" size={16} color="rgba(255,255,255,0.7)" />
+                </LinearGradient>
+              </Animated.View>
+            </Pressable>
+          </FadeInView>
         )}
 
-        <TouchableOpacity
-          style={themedStyles.signOutButton}
-          onPress={handleSignOut}
-        >
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
+        <FadeInView delay={350} direction="up">
+          <Pressable
+            onPressIn={() => animateButton(signOutScale, true)}
+            onPressOut={() => animateButton(signOutScale, false)}
+            onPress={handleSignOut}
+          >
+            <Animated.View style={{ transform: [{ scale: signOutScale }] }}>
+              <View
+                style={[
+                  styles.signOutButton,
+                  { backgroundColor: colors.errorLight },
+                  theme.shadows.sm,
+                ]}
+              >
+                <IconSymbol name="arrow.right.square" size={20} color={colors.error} />
+                <Text style={[styles.signOutButtonText, { color: colors.error }]}>
+                  Sign Out
+                </Text>
+              </View>
+            </Animated.View>
+          </Pressable>
+        </FadeInView>
       </View>
 
       {/* App Info */}
@@ -338,7 +404,6 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -356,60 +421,73 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 36,
     paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+  },
+  headerDecoration: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  decorCircle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  decorCircle1: {
+    width: 200,
+    height: 200,
+    top: -80,
+    right: -60,
+  },
+  decorCircle2: {
+    width: 120,
+    height: 120,
+    bottom: -40,
+    left: -30,
   },
   avatarContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#6366f1',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   avatarText: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 40,
+    fontWeight: '700',
     color: '#fff',
   },
   userName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#1f2937',
+    color: '#fff',
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   userEmail: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 12,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 16,
   },
-  adminBadge: {
-    backgroundColor: '#10b981',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
-  adminBadgeText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  studentBadge: {
-    backgroundColor: '#6366f1',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  studentBadgeText: {
+  roleBadgeText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
@@ -421,9 +499,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1f2937',
     marginBottom: 16,
+    letterSpacing: -0.3,
   },
   statsLoading: {
     flexDirection: 'row',
@@ -445,64 +524,64 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '45%',
     backgroundColor: '#ffffff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statContent: {
+    flex: 1,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 4,
-  },
-  statTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
     marginBottom: 2,
   },
+  statTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
   statSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#9ca3af',
+    marginTop: 2,
   },
   actionsSection: {
     paddingHorizontal: 16,
     paddingTop: 24,
     gap: 12,
   },
-  notificationButton: {
-    backgroundColor: '#6366f1',
-    padding: 16,
-    borderRadius: 12,
+  actionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
   },
-  notificationButtonText: {
+  actionButtonText: {
+    flex: 1,
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   signOutButton: {
-    backgroundColor: '#ef4444',
-    padding: 16,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 10,
   },
   signOutButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

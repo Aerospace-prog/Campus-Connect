@@ -1,29 +1,39 @@
+import { FadeInView } from '@/components/animated-components';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/auth.context';
+import { useTheme } from '@/contexts/theme.context';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
 
 export default function SignupScreen() {
   const router = useRouter();
   const { signUp } = useAuth();
+  const { colors, theme } = useTheme();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'student' | 'admin' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'student' | 'admin' | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
@@ -33,7 +43,60 @@ export default function SignupScreen() {
     general?: string;
   }>({});
 
-  
+  // Animations
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const studentRoleScale = useRef(new Animated.Value(1)).current;
+  const adminRoleScale = useRef(new Animated.Value(1)).current;
+
+  const themedStyles = useMemo(
+    () => ({
+      container: { ...styles.container, backgroundColor: colors.background },
+      title: { ...styles.title, color: colors.text },
+      subtitle: { ...styles.subtitle, color: colors.textSecondary },
+      label: { ...styles.label, color: colors.text },
+      input: {
+        ...styles.input,
+        backgroundColor: colors.inputBackground,
+        borderColor: colors.inputBorder,
+        color: colors.text,
+      },
+      inputFocused: {
+        borderColor: colors.primary,
+        backgroundColor: colors.background,
+      },
+      inputError: {
+        borderColor: colors.error,
+        backgroundColor: colors.errorLight,
+      },
+      errorText: { ...styles.errorText, color: colors.error },
+      generalErrorContainer: {
+        ...styles.generalErrorContainer,
+        backgroundColor: colors.errorLight,
+        borderLeftColor: colors.error,
+      },
+      generalErrorText: { ...styles.generalErrorText, color: colors.error },
+      footerText: { ...styles.footerText, color: colors.textSecondary },
+      linkText: { ...styles.linkText, color: colors.primary },
+      roleOption: {
+        ...styles.roleOption,
+        backgroundColor: colors.inputBackground,
+        borderColor: colors.inputBorder,
+      },
+      roleOptionSelected: {
+        borderColor: colors.primary,
+        backgroundColor: colors.primaryLight,
+      },
+      roleOptionError: {
+        borderColor: colors.error,
+      },
+      roleTitle: { ...styles.roleTitle, color: colors.text },
+      roleTextSelected: { color: colors.primary },
+      roleDescription: { ...styles.roleDescription, color: colors.textSecondary },
+      roleDescriptionSelected: { color: colors.primary },
+    }),
+    [colors]
+  );
+
   const validateForm = (): boolean => {
     const newErrors: {
       name?: string;
@@ -86,14 +149,13 @@ export default function SignupScreen() {
 
     try {
       await signUp(email.trim(), password, name.trim(), selectedRole!);
-      // Navigation will happen automatically via _layout.tsx when auth state changes
     } catch (error: any) {
       let errorMessage = 'Failed to create account. Please try again.';
 
       if (error.message) {
-        // Parse Firebase error messages
         if (error.message.includes('email-already-in-use')) {
-          errorMessage = 'This email is already registered. Please sign in instead.';
+          errorMessage =
+            'This email is already registered. Please sign in instead.';
         } else if (error.message.includes('invalid-email')) {
           errorMessage = 'Please enter a valid email address';
         } else if (error.message.includes('weak-password')) {
@@ -115,219 +177,401 @@ export default function SignupScreen() {
     router.push('/(auth)/login' as any);
   };
 
+  const handleRoleSelect = useCallback(
+    (role: 'student' | 'admin') => {
+      if (Platform.OS === 'ios') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setSelectedRole(role);
+      if (errors.role) {
+        setErrors({ ...errors, role: undefined });
+      }
+
+      // Animate the selected role
+      const scaleAnim = role === 'student' ? studentRoleScale : adminRoleScale;
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }),
+      ]).start();
+    },
+    [adminRoleScale, errors, studentRoleScale]
+  );
+
+  const handleButtonPressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
+  };
+
+  const handleButtonPressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 50,
+    }).start();
+  };
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={themedStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join CampusConnect today</Text>
-          </View>
+          <FadeInView delay={0} direction="up">
+            <View style={styles.header}>
+              <Text style={themedStyles.title}>Create Account</Text>
+              <Text style={themedStyles.subtitle}>
+                Join CampusConnect today
+              </Text>
+            </View>
+          </FadeInView>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                style={[styles.input, errors.name && styles.inputError]}
-                placeholder="Enter your full name"
-                placeholderTextColor="#999"
-                value={name}
-                onChangeText={(text) => {
-                  setName(text);
-                  if (errors.name) {
-                    setErrors({ ...errors, name: undefined });
-                  }
-                }}
-                autoCapitalize="words"
-                autoComplete="name"
-                editable={!loading}
-              />
-              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>I am a...</Text>
-              <View style={styles.roleContainer}>
-                <TouchableOpacity
+            <FadeInView delay={100} direction="up">
+              <View style={styles.inputContainer}>
+                <Text style={themedStyles.label}>Full Name</Text>
+                <TextInput
                   style={[
-                    styles.roleOption,
-                    selectedRole === 'student' && styles.roleOptionSelected,
-                    errors.role && !selectedRole && styles.roleOptionError,
+                    themedStyles.input,
+                    focusedInput === 'name' && themedStyles.inputFocused,
+                    errors.name && themedStyles.inputError,
                   ]}
-                  onPress={() => {
-                    setSelectedRole('student');
-                    if (errors.role) {
-                      setErrors({ ...errors, role: undefined });
+                  placeholder="Enter your full name"
+                  placeholderTextColor={colors.placeholder}
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    if (errors.name) {
+                      setErrors({ ...errors, name: undefined });
                     }
                   }}
-                  disabled={loading}
-                >
-                  <View style={styles.roleContent}>
-                    <Text
-                      style={[
-                        styles.roleTitle,
-                        selectedRole === 'student' && styles.roleTextSelected,
-                      ]}
-                    >
-                      Student
-                    </Text>
-                    <Text
-                      style={[
-                        styles.roleDescription,
-                        selectedRole === 'student' && styles.roleDescriptionSelected,
-                      ]}
-                    >
-                      Browse and RSVP to events
-                    </Text>
-                  </View>
-                  {selectedRole === 'student' && (
-                    <View style={styles.checkmark}>
-                      <Text style={styles.checkmarkText}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.roleOption,
-                    selectedRole === 'admin' && styles.roleOptionSelected,
-                    errors.role && !selectedRole && styles.roleOptionError,
-                  ]}
-                  onPress={() => {
-                    setSelectedRole('admin');
-                    if (errors.role) {
-                      setErrors({ ...errors, role: undefined });
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  <View style={styles.roleContent}>
-                    <Text
-                      style={[
-                        styles.roleTitle,
-                        selectedRole === 'admin' && styles.roleTextSelected,
-                      ]}
-                    >
-                      Event Organizer
-                    </Text>
-                    <Text
-                      style={[
-                        styles.roleDescription,
-                        selectedRole === 'admin' && styles.roleDescriptionSelected,
-                      ]}
-                    >
-                      Create and manage events
-                    </Text>
-                  </View>
-                  {selectedRole === 'admin' && (
-                    <View style={styles.checkmark}>
-                      <Text style={styles.checkmarkText}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  onFocus={() => setFocusedInput('name')}
+                  onBlur={() => setFocusedInput(null)}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  editable={!loading}
+                />
+                {errors.name && (
+                  <Text style={themedStyles.errorText}>{errors.name}</Text>
+                )}
               </View>
-              {errors.role && <Text style={styles.errorText}>{errors.role}</Text>}
-            </View>
+            </FadeInView>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Enter your email"
-                placeholderTextColor="#999"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (errors.email) {
-                    setErrors({ ...errors, email: undefined });
-                  }
-                }}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoComplete="email"
-                editable={!loading}
-              />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
+            <FadeInView delay={150} direction="up">
+              <View style={styles.inputContainer}>
+                <Text style={themedStyles.label}>I am a...</Text>
+                <View style={styles.roleContainer}>
+                  <Pressable
+                    onPress={() => handleRoleSelect('student')}
+                    disabled={loading}
+                  >
+                    <Animated.View
+                      style={[
+                        themedStyles.roleOption,
+                        selectedRole === 'student' &&
+                          themedStyles.roleOptionSelected,
+                        errors.role &&
+                          !selectedRole &&
+                          themedStyles.roleOptionError,
+                        { transform: [{ scale: studentRoleScale }] },
+                      ]}
+                    >
+                      <View style={styles.roleIconContainer}>
+                        <View
+                          style={[
+                            styles.roleIcon,
+                            {
+                              backgroundColor:
+                                selectedRole === 'student'
+                                  ? colors.primary
+                                  : colors.backgroundTertiary,
+                            },
+                          ]}
+                        >
+                          <IconSymbol
+                            name="person.fill"
+                            size={20}
+                            color={
+                              selectedRole === 'student'
+                                ? '#fff'
+                                : colors.textSecondary
+                            }
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.roleContent}>
+                        <Text
+                          style={[
+                            themedStyles.roleTitle,
+                            selectedRole === 'student' &&
+                              themedStyles.roleTextSelected,
+                          ]}
+                        >
+                          Student
+                        </Text>
+                        <Text
+                          style={[
+                            themedStyles.roleDescription,
+                            selectedRole === 'student' &&
+                              themedStyles.roleDescriptionSelected,
+                          ]}
+                        >
+                          Browse and RSVP to events
+                        </Text>
+                      </View>
+                      {selectedRole === 'student' && (
+                        <View
+                          style={[
+                            styles.checkmark,
+                            { backgroundColor: colors.primary },
+                          ]}
+                        >
+                          <IconSymbol name="checkmark" size={14} color="#fff" />
+                        </View>
+                      )}
+                    </Animated.View>
+                  </Pressable>
 
+                  <Pressable
+                    onPress={() => handleRoleSelect('admin')}
+                    disabled={loading}
+                  >
+                    <Animated.View
+                      style={[
+                        themedStyles.roleOption,
+                        selectedRole === 'admin' &&
+                          themedStyles.roleOptionSelected,
+                        errors.role &&
+                          !selectedRole &&
+                          themedStyles.roleOptionError,
+                        { transform: [{ scale: adminRoleScale }] },
+                      ]}
+                    >
+                      <View style={styles.roleIconContainer}>
+                        <View
+                          style={[
+                            styles.roleIcon,
+                            {
+                              backgroundColor:
+                                selectedRole === 'admin'
+                                  ? colors.secondary
+                                  : colors.backgroundTertiary,
+                            },
+                          ]}
+                        >
+                          <IconSymbol
+                            name="star.fill"
+                            size={20}
+                            color={
+                              selectedRole === 'admin'
+                                ? '#fff'
+                                : colors.textSecondary
+                            }
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.roleContent}>
+                        <Text
+                          style={[
+                            themedStyles.roleTitle,
+                            selectedRole === 'admin' &&
+                              themedStyles.roleTextSelected,
+                          ]}
+                        >
+                          Event Organizer
+                        </Text>
+                        <Text
+                          style={[
+                            themedStyles.roleDescription,
+                            selectedRole === 'admin' &&
+                              themedStyles.roleDescriptionSelected,
+                          ]}
+                        >
+                          Create and manage events
+                        </Text>
+                      </View>
+                      {selectedRole === 'admin' && (
+                        <View
+                          style={[
+                            styles.checkmark,
+                            { backgroundColor: colors.secondary },
+                          ]}
+                        >
+                          <IconSymbol name="checkmark" size={14} color="#fff" />
+                        </View>
+                      )}
+                    </Animated.View>
+                  </Pressable>
+                </View>
+                {errors.role && (
+                  <Text style={themedStyles.errorText}>{errors.role}</Text>
+                )}
+              </View>
+            </FadeInView>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[styles.input, errors.password && styles.inputError]}
-                placeholder="Create a password (min. 6 characters)"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (errors.password) {
-                    setErrors({ ...errors, password: undefined });
-                  }
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password-new"
-                editable={!loading}
-              />
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            </View>
+            <FadeInView delay={200} direction="up">
+              <View style={styles.inputContainer}>
+                <Text style={themedStyles.label}>Email</Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    focusedInput === 'email' && themedStyles.inputFocused,
+                    errors.email && themedStyles.inputError,
+                  ]}
+                  placeholder="Enter your email"
+                  placeholderTextColor={colors.placeholder}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) {
+                      setErrors({ ...errors, email: undefined });
+                    }
+                  }}
+                  onFocus={() => setFocusedInput('email')}
+                  onBlur={() => setFocusedInput(null)}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  editable={!loading}
+                />
+                {errors.email && (
+                  <Text style={themedStyles.errorText}>{errors.email}</Text>
+                )}
+              </View>
+            </FadeInView>
 
+            <FadeInView delay={250} direction="up">
+              <View style={styles.inputContainer}>
+                <Text style={themedStyles.label}>Password</Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    focusedInput === 'password' && themedStyles.inputFocused,
+                    errors.password && themedStyles.inputError,
+                  ]}
+                  placeholder="Create a password (min. 6 characters)"
+                  placeholderTextColor={colors.placeholder}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) {
+                      setErrors({ ...errors, password: undefined });
+                    }
+                  }}
+                  onFocus={() => setFocusedInput('password')}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password-new"
+                  editable={!loading}
+                />
+                {errors.password && (
+                  <Text style={themedStyles.errorText}>{errors.password}</Text>
+                )}
+              </View>
+            </FadeInView>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={[styles.input, errors.confirmPassword && styles.inputError]}
-                placeholder="Re-enter your password"
-                placeholderTextColor="#999"
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
-                  if (errors.confirmPassword) {
-                    setErrors({ ...errors, confirmPassword: undefined });
-                  }
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password-new"
-                editable={!loading}
-              />
-              {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-              )}
-            </View>
-
+            <FadeInView delay={300} direction="up">
+              <View style={styles.inputContainer}>
+                <Text style={themedStyles.label}>Confirm Password</Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    focusedInput === 'confirmPassword' &&
+                      themedStyles.inputFocused,
+                    errors.confirmPassword && themedStyles.inputError,
+                  ]}
+                  placeholder="Re-enter your password"
+                  placeholderTextColor={colors.placeholder}
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (errors.confirmPassword) {
+                      setErrors({ ...errors, confirmPassword: undefined });
+                    }
+                  }}
+                  onFocus={() => setFocusedInput('confirmPassword')}
+                  onBlur={() => setFocusedInput(null)}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password-new"
+                  editable={!loading}
+                />
+                {errors.confirmPassword && (
+                  <Text style={themedStyles.errorText}>
+                    {errors.confirmPassword}
+                  </Text>
+                )}
+              </View>
+            </FadeInView>
 
             {errors.general && (
-              <View style={styles.generalErrorContainer}>
-                <Text style={styles.generalErrorText}>{errors.general}</Text>
-              </View>
+              <FadeInView direction="none">
+                <View style={themedStyles.generalErrorContainer}>
+                  <Text style={themedStyles.generalErrorText}>
+                    {errors.general}
+                  </Text>
+                </View>
+              </FadeInView>
             )}
 
+            <FadeInView delay={350} direction="up">
+              <Pressable
+                onPressIn={handleButtonPressIn}
+                onPressOut={handleButtonPressOut}
+                onPress={handleSignup}
+                disabled={loading}
+              >
+                <Animated.View
+                  style={[
+                    { transform: [{ scale: buttonScale }] },
+                    loading && styles.buttonDisabled,
+                  ]}
+                >
+                  <LinearGradient
+                    colors={
+                      loading
+                        ? [colors.textDisabled, colors.textDisabled]
+                        : [colors.primary, '#8b5cf6']
+                    }
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.button, theme.shadows.md]}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={colors.onPrimary} />
+                    ) : (
+                      <Text style={styles.buttonText}>Create Account</Text>
+                    )}
+                  </LinearGradient>
+                </Animated.View>
+              </Pressable>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSignup}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
-              <TouchableOpacity onPress={navigateToLogin} disabled={loading}>
-                <Text style={styles.linkText}>Sign In</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.footer}>
+                <Text style={themedStyles.footerText}>
+                  Already have an account?{' '}
+                </Text>
+                <Pressable onPress={navigateToLogin} disabled={loading}>
+                  <Text style={themedStyles.linkText}>Sign In</Text>
+                </Pressable>
+              </View>
+            </FadeInView>
           </View>
         </View>
       </ScrollView>
@@ -346,87 +590,82 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 48,
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 28,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
+    textAlign: 'center',
   },
   form: {
     flex: 1,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 8,
+    marginLeft: 4,
   },
   input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12,
+    height: 54,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#f9fafb',
     color: '#1a1a1a',
-  },
-  inputError: {
-    borderColor: '#ff3b30',
-    backgroundColor: '#fff5f5',
   },
   errorText: {
     fontSize: 12,
-    color: '#ff3b30',
-    marginTop: 4,
+    color: '#ef4444',
+    marginTop: 6,
+    marginLeft: 4,
   },
   generalErrorContainer: {
-    backgroundColor: '#fff5f5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 20,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 18,
     borderLeftWidth: 4,
-    borderLeftColor: '#ff3b30',
+    borderLeftColor: '#ef4444',
   },
   generalErrorText: {
     fontSize: 14,
-    color: '#ff3b30',
+    color: '#ef4444',
+    fontWeight: '500',
   },
   button: {
-    height: 50,
-    backgroundColor: '#0a7ea4',
-    borderRadius: 12,
+    height: 54,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#0a7ea4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#b0b0b0',
-    shadowOpacity: 0,
-    elevation: 0,
+    opacity: 0.7,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
+    letterSpacing: 0.3,
   },
   footer: {
     flexDirection: 'row',
@@ -435,13 +674,13 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
   },
   linkText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#0a7ea4',
+    color: '#6366f1',
   },
   roleContainer: {
     gap: 12,
@@ -449,19 +688,21 @@ const styles = StyleSheet.create({
   roleOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: '#e5e7eb',
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: '#f9fafb',
+  },
+  roleIconContainer: {
+    marginRight: 14,
+  },
+  roleIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    padding: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  roleOptionSelected: {
-    borderColor: '#0a7ea4',
-    backgroundColor: '#e6f4f8',
-  },
-  roleOptionError: {
-    borderColor: '#ff3b30',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   roleContent: {
     flex: 1,
@@ -470,30 +711,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  roleTextSelected: {
-    color: '#0a7ea4',
+    marginBottom: 2,
   },
   roleDescription: {
     fontSize: 13,
     color: '#666',
   },
-  roleDescriptionSelected: {
-    color: '#0a7ea4',
-  },
   checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#0a7ea4',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
-  },
-  checkmarkText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+    marginLeft: 10,
   },
 });

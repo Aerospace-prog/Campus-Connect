@@ -264,7 +264,7 @@ export function IconButton({
   onPress,
   ...props
 }: IconButtonProps) {
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
 
   const handlePressIn = useCallback(
     (event: any) => {
