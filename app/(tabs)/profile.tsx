@@ -13,15 +13,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  Animated,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 interface StatCardProps {
@@ -82,7 +82,6 @@ export default function ProfileScreen() {
   // Animations
   const signOutScale = useRef(new Animated.Value(1)).current;
   const notificationScale = useRef(new Animated.Value(1)).current;
-  const refreshNotifScale = useRef(new Animated.Value(1)).current;
 
   const themedStyles = useMemo(
     () => ({
@@ -178,43 +177,6 @@ export default function ProfileScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     router.push('/send-notification' as any);
-  };
-
-  const handleRefreshNotifications = async () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    
-    if (!user?.uid) {
-      Alert.alert('Error', 'You must be logged in to refresh notifications');
-      return;
-    }
-
-    try {
-      const pushToken = await NotificationService.registerForPushNotifications();
-      
-      if (pushToken) {
-        await NotificationService.storePushToken(user.uid, pushToken);
-        console.log('Push token refreshed:', pushToken);
-        Alert.alert(
-          'Success', 
-          'Push notifications enabled! You will now receive event notifications.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert(
-          'Notifications Unavailable',
-          'Push notifications could not be enabled. This may be because:\n\n' +
-          '• You denied notification permissions\n' +
-          '• You are using Expo Go (use a development build instead)\n' +
-          '• The app is not properly configured for push notifications',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('Error refreshing push token:', error);
-      Alert.alert('Error', 'Failed to refresh notifications. Please try again.');
-    }
   };
 
   const animateButton = (anim: Animated.Value, pressed: boolean) => {
@@ -413,30 +375,6 @@ export default function ProfileScreen() {
 
         <FadeInView delay={350} direction="up">
           <Pressable
-            onPressIn={() => animateButton(refreshNotifScale, true)}
-            onPressOut={() => animateButton(refreshNotifScale, false)}
-            onPress={handleRefreshNotifications}
-          >
-            <Animated.View style={{ transform: [{ scale: refreshNotifScale }] }}>
-              <View
-                style={[
-                  styles.refreshNotifButton,
-                  { backgroundColor: colors.cardBackground },
-                  theme.shadows.sm,
-                ]}
-              >
-                <IconSymbol name="arrow.clockwise" size={20} color={colors.primary} />
-                <Text style={[styles.refreshNotifButtonText, { color: colors.text }]}>
-                  Refresh Notifications
-                </Text>
-                <IconSymbol name="chevron.right" size={16} color={colors.textTertiary} />
-              </View>
-            </Animated.View>
-          </Pressable>
-        </FadeInView>
-
-        <FadeInView delay={400} direction="up">
-          <Pressable
             onPressIn={() => animateButton(signOutScale, true)}
             onPressOut={() => animateButton(signOutScale, false)}
             onPress={handleSignOut}
@@ -632,18 +570,6 @@ const styles = StyleSheet.create({
   actionButtonText: {
     flex: 1,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  refreshNotifButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    gap: 12,
-  },
-  refreshNotifButtonText: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '600',
   },
