@@ -2,7 +2,6 @@
  * Theme Context and Provider
  * 
  * Provides centralized theme management with light/dark mode support.
- * Requirements: 10.4, 10.5
  */
 
 import {

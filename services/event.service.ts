@@ -186,8 +186,8 @@ export class EventService {
    * Subscribe to real-time updates for all upcoming events
    * Returns an unsubscribe function
    * 
-   * @param callback - Called with events array when data changes
-   * @param onError - Optional error callback for handling subscription errors
+   * callback - Called with events array when data changes
+   *  onError - Optional error callback for handling subscription errors
    */
   static subscribeToEvents(
     callback: (events: Event[]) => void,

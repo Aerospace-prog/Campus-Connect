@@ -80,7 +80,7 @@ export class NotificationService {
       const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
       console.log('Expo Push Token:', tokenData.data);
 
-      // Also get the native device token (FCM for Android, APNs for iOS)
+      // Also get the native device token (FCM for Android)
       // This can be used as a fallback or for direct FCM integration
       try {
         const deviceToken = await Notifications.getDevicePushTokenAsync();
@@ -332,7 +332,6 @@ export class NotificationService {
 
   /**
    * Set up notification listeners for foreground notifications and tap handling
-   * Requirements: 6.3, 6.4
    */
   static setupNotificationListeners(): () => void {
     // Listener for notifications received while app is in foreground
@@ -366,7 +365,6 @@ export class NotificationService {
 
   /**
    * Handle notification received in foreground
-   * Requirements: 6.3
    */
   private static handleNotificationReceived(
     notification: Notifications.Notification
@@ -378,7 +376,6 @@ export class NotificationService {
 
   /**
    * Handle notification tap - deep link to event detail
-   * Requirements: 6.4
    */
   private static handleNotificationTap(
     response: Notifications.NotificationResponse

@@ -17,11 +17,7 @@ export class CheckInService {
   private static readonly EVENTS_COLLECTION = 'events';
   private static readonly USERS_COLLECTION = 'users';
 
-  /**
-   * Validate QR code data using the decodeQRData utility
-   * @param qrString - Raw QR code string data
-   * @returns Validation result with decoded data or error
-   */
+ 
   static validateQRData(qrString: string): QRValidationResult {
     return decodeQRData(qrString);
   }
@@ -30,11 +26,6 @@ export class CheckInService {
    * Check in a user to an event
    * Verifies RSVP status and adds user to checkedIn array
    * Uses arrayUnion for idempotent operations (no duplicates)
-   * 
-   * @param userId - User ID from QR code
-   * @param eventId - Event ID from QR code
-   * @returns Check-in result with success status and message
-   *
    */
   static async checkInUser(userId: string, eventId: string): Promise<CheckInResult> {
     try {
@@ -110,9 +101,6 @@ export class CheckInService {
 
   /**
    * Get check-in status for a user at an event
-   * @param userId - User ID to check
-   * @param eventId - Event ID to check
-   * @returns True if user is checked in, false otherwise
    */
   static async getCheckInStatus(userId: string, eventId: string): Promise<boolean> {
     try {
@@ -140,8 +128,8 @@ export class CheckInService {
 
   /**
    * Get attendance data for an event
-   * @param eventId - Event ID to get attendance for
-   * @returns Attendance data including RSVP and check-in counts
+   * eventId - Event ID to get attendance for
+   * Attendance data including RSVP and check-in counts
    */
   static async getEventAttendance(eventId: string): Promise<AttendanceData | null> {
     try {
@@ -181,8 +169,8 @@ export class CheckInService {
 
   /**
    * Helper method to get user name from Firestore
-   * @param userId - User ID to look up
-   * @returns User name or null if not found
+   * userId - User ID to look up
+   * User name or null if not found
    */
   private static async getUserName(userId: string): Promise<string | null> {
     try {
@@ -208,8 +196,8 @@ export class CheckInService {
    * Validate and check in a user from QR code data
    * Combines validation and check-in into a single operation
    * 
-   * @param qrString - Raw QR code string data
-   * @returns Check-in result with success status and message
+   * qrString - Raw QR code string data
+   * Check-in result with success status and message
    */
   static async validateAndCheckIn(qrString: string): Promise<CheckInResult> {
     // First validate the QR data

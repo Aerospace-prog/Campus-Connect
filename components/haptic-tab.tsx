@@ -2,7 +2,6 @@
  * Haptic Tab Component
  * 
  * Tab bar button with haptic feedback for both iOS and Android.
- * Requirements: 10.4, 10.5
  */
 
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';

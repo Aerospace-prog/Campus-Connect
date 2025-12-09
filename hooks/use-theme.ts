@@ -2,7 +2,6 @@
  * useTheme Hook
  * 
  * Re-exports theme hooks from the theme context for convenient access.
- * Requirements: 10.4, 10.5
  */
 
 export {

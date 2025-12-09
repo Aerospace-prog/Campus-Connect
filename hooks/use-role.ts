@@ -21,21 +21,6 @@ interface UseRoleResult {
 
 /**
  * useRole hook - Check current user's role and permissions
- * 
- * @returns Role information and helper functions
- * 
- * @example
- * ```tsx
- * const { isAdmin, hasRole } = useRole();
- * 
- * if (isAdmin) {
- *   // Show admin features
- * }
- * 
- * if (hasRole('admin')) {
- *   // Alternative way to check
- * }
- * ```
  */
 export function useRole(): UseRoleResult {
   const { user, loading } = useAuth();
